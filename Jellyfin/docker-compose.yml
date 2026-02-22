@@ -1,0 +1,14 @@
+version: "3"
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - /srv/YOUR_DISK_UUID/jellyfin/config:/config
+      - /srv/YOUR_DISK_UUID/jellyfin/cache:/cache
+      - /srv/YOUR_DISK_UUID/Movies:/media/movies:ro
+      - /srv/YOUR_DISK_UUID/TVShows:/media/tvshows:ro
+      - /srv/YOUR_DISK_UUID/Music:/media/music:ro

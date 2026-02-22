@@ -1,0 +1,41 @@
+x-restart-policy: &restart-policy "unless-stopped"
+services:
+  dns:
+    image: lancachenet/lancache-dns:latest
+    container_name: lancache_dns
+    env_file: .env
+    restart: *restart-policy
+    ports:
+      - ${DNS_BIND_IP}:5053:53/udp
+      - ${DNS_BIND_IP}:5053:53/tcp
+    environment:
+      - UPSTREAM_DNS=${UPSTREAM_DNS}
+  monolithic:
+    image: lancachenet/monolithic:latest
+    container_name: lancache_monolithic
+    env_file: .env
+    restart: *restart-policy
+    ports:
+      - 80:80/tcp
+      - 443:443/tcp
+    volumes:
+      - ${CACHE_ROOT}/..:/data/cache
+      - ${CACHE_ROOT}/../logs:/data/logs
+      - ./nginx-custom/custom-timeouts.conf:/etc/nginx/conf.d/custom-timeouts.conf:ro
+      - ./nginx-custom/upstream-timeouts.conf:/etc/nginx/sites-available/upstream.conf.d/35_timeouts.conf:ro
+      - ./nginx-custom/cache-timeouts.conf:/etc/nginx/sites-available/cache.conf.d/05_timeouts.conf:ro
+      - ./nginx-custom/performance.conf:/etc/nginx/conf.d/performance.conf:ro
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: *restart-policy
+    network_mode: "host"
+    environment:
+      TZ: '${TZ}'
+      WEBPASSWORD: 'YOUR_PIHOLE_PASSWORD'
+      PIHOLE_DNS_: 'YOUR_SERVER_IP#5053'
+      FTLCONF_LOCAL_IPV4: 'YOUR_SERVER_IP'
+      FTLCONF_webserver_port: '8080'
+    volumes:
+      - './pihole/etc-pihole:/etc/pihole'
+      - './pihole/etc-dnsmasq.d:/etc/dnsmasq.d'
