@@ -9,7 +9,7 @@
 # Configuration
 DVD_DEVICE="/dev/sr0"
 MOVIES_DIR="/srv/YOUR_DISK_UUID/Movies"
-GAMES_DIR="/srv/dYOUR_DISK_UUID/GameBackups"
+GAMES_DIR="/srv/YOUR_DISK_UUID/GameBackups"
 LOG_FILE="/var/log/dvd-ripper.log"
 
 # Colors for pretty output
