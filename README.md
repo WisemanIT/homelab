@@ -11,13 +11,16 @@ problems solved along the way.
 ## 🔧 Hardware
 
 ### Server
-| Component | Details  
-|-----------|--------------------------------------------------------------------------------
-| OS Drive  | WD 232GB (WDC WD2500AAJS) 
-| Storage 1 | Toshiba 1.82TB — LanCache 
-| Storage 2 | Seagate 465GB — Nextcloud + GameBackups 
-| Storage 3 | Seagate 931GB — Media (Movies, TV, Music) 
-| OS        | OpenMediaVault (Debian Bookworm) 
+| Component     | Details 
+|---------------|---------------------------------------------------------------------------------------
+| Motherboard   | Lenovo IQ1X0MS — repurposed from Lenovo ThinkCentre M900 SFF (Machine Type 10FG) 
+| Power Supply  | Rewired — repurposed from Lenovo ThinkCentre M58p (Machine Type 9965) 
+| Chassis       | Armaggeddon Tron 1X Micro ATX Case 
+| OS Drive      | WD 232GB (WDC WD2500AAJS) 
+| Storage 1     | Toshiba 1.82TB — LanCache 
+| Storage 2     | Seagate 465GB — Nextcloud + GameBackups 
+| Storage 3     | Seagate 931GB — Media (Movies, TV, Music) 
+| OS            | OpenMediaVault (Debian Bookworm) 
 
 ### Origin Story
 The server was built from two separate machines — neither 
@@ -35,16 +38,19 @@ to the ZTE H288a AP router. The following devices are also
 wired to the ZTE in the workshop:
 
 | Device     | Role 
-|------------|-------------------------------------------------------------------------------
+|------------|------------------------------------------------------------------------------------------
 | Desktop PC | Primary monitoring and management 
 | Laptop     | Troubleshooting — used in workshop and portable enough to troubleshoot inside the house
 
 ### Network
-| Device               | Role 
-|----------------------|---------------------------------------------------------------------
-| TP-Link Archer MR600 | Main router (house) 
-| ZTE H288a            | AP router (workshop) 
-| CAT5e 20m cable      | Connects house LAN to workshop WAN 
+| Device                          | Role 
+|---------------------------------|---------------------------------------------------------------------
+| TP-Link Archer MR600            | Main router (house) 
+| ZTE H288a                       | AP router (workshop) 
+| CAT5e 20m cable                 | Connects house LAN to workshop WAN 
+| Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise WiFi AP (house)
+| Utepo PoE Injector NW143-2      | PoE delivery for Cisco AP
+| CAT6 20m cable                  | Connects Cisco AP to main router
 
 ### Other Hardware
 - **Optical Drive:** Salvaged from Lenovo ThinkCentre M58p 
@@ -96,16 +102,17 @@ for installation details.
 ```
 homelab/
 ├── docker/
-│   ├── lancache/          # LanCache + Pi-hole
-│   ├── nextcloud/         # Nextcloud + MariaDB + Redis
-│   ├── sys-api/           # Sys-API + configuration
-│   └── jellyfin/          # Jellyfin media server
+│   ├── lancache/               # LanCache + Pi-hole
+│   ├── nextcloud/              # Nextcloud + MariaDB + Redis
+│   ├── sys-api/                # Sys-API + configuration
+│   └── jellyfin/               # Jellyfin media server
 ├── scripts/
-│   └── dvd-ripper.sh      # Smart disc ripping script
+│   └── dvd-ripper.sh           # Smart disc ripping script
 └── docs/
-    ├── network-setup.md   # Network architecture + troubleshooting
-    ├── dvd-ripping.md     # DVD/game ripping setup
-    └── plex-native-install.md
+    ├── network-setup.md        # Network architecture + troubleshooting
+    ├── dvd-ripping.md          # DVD/game ripping setup
+    └── plex-native-install.md  # Plex native installation
+    └── cisco-ap-conversion.md  # Cisco AP autonomous mode conversion
 ```
 
 ---
@@ -194,3 +201,4 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
