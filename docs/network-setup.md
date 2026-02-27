@@ -4,23 +4,166 @@
 This homelab runs on a dual-router network setup spanning 
 two physical locations — the main house and a workshop.
 
+---
+
 ## Hardware
-- **Main Router:** TP-Link Archer MR600 (house)
-- **AP Router:** ZTE H288a (workshop)
-- **Connection:** 20-metre CAT5e Ethernet cable from main 
-  router LAN port to ZTE WAN port
-- **Server IP:** YOUR_SERVER_IP
+| Device | Role | Location |
+|--------|------|----------|
+| TP-Link Archer MR600 | Main router — LTE WAN | House |
+| ZTE H288a | AP router — workshop gateway | Workshop |
+| Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise WiFi AP | House (planned) |
+| Grandstream HT801 | ATA — analog to VoIP | House |
+| Panasonic KX-TS880FXW | Corded phone via ZTE VoIP | Workshop |
+| Huawei K5161H | 4G LTE backup WAN | Workshop |
+| CAT5e 20m | House LAN to workshop WAN | — |
+| CAT6 20m | Cisco AP to main router (planned) | — |
+
+---
 
 ## Network Topology
-The two routers create isolated network segments:
-- **House network:** Connected to TP-Link Archer MR600
-- **Workshop network:** Connected to ZTE H288a
+```
+Internet (LTE)
+      │
+      ▼
+TP-Link Archer MR600 (House) — 192.168.1.0/24
+      │
+      │ LAN → WAN (CAT5e 20m)
+      ▼
+ZTE H288a (Workshop) — 192.168.2.0/24
+      │
+      ├── Server (192.168.2.150)
+      ├── Desktop PC
+      └── Laptop
+      
+House Devices → 192.168.1.x
+      │
+      └── Grandstream HT801 (ATA)
+            └── Analog telephone → VoIP
 
-Routing rules are configured on both routers to allow 
-controlled communication between segments, enabling:
-- Workshop devices to access the internet
-- Cross-network device communication
-- Access to web interfaces on both routers
+[Planned]
+TP-Link → CAT6 → Utepo PoE Injector → Cisco Aironet 3602i (WiFi AP)
+```
+
+---
+
+## Routing Configuration
+
+### ZTE H288a Routing Table
+| Network | Subnet Mask | Gateway | Interface |
+|---------|-------------|---------|-----------|
+| 0.0.0.0 | 0.0.0.0 | 192.168.1.1 | Internet |
+| 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | Internet |
+| 192.168.2.0 | 255.255.255.0 | 0.0.0.0 | LAN |
+
+### ZTE Static Route
+| Name | Egress | Network | Subnet Mask | Gateway |
+|------|--------|---------|-------------|---------|
+| TP-Link Route | Internet | 192.168.1.0 | 255.255.255.0 | 192.168.1.1 |
+
+### TP-Link Archer MR600 Routing Table
+| ID | Network | Subnet Mask | Gateway | Interface |
+|----|---------|-------------|---------|-----------|
+| 1 | 0.0.0.0 | 0.0.0.0 | 192.143.18.72 | LTE |
+| 2 | 192.143.18.64 | 255.255.255.240 | 0.0.0.0 | LTE |
+| 3 | 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | LAN & WLAN |
+| 4 | 192.168.2.0 | 255.255.255.0 | 192.168.1.2 | LAN & WLAN |
+
+### TP-Link Static Route
+| Network | Subnet Mask | Gateway |
+|---------|-------------|---------|
+| 192.168.2.0 | 255.255.255.0 | 192.168.1.2 |
+
+**This static route is critical** — it tells the TP-Link 
+that to reach any device on the 192.168.2.0 workshop 
+network, traffic must be sent to 192.168.1.2 (the ZTE's 
+WAN IP). Without this route house devices cannot 
+communicate with workshop devices or the server.
+
+---
+
+## Port Forwarding / NAT Configuration
+
+### ZTE H288a — Port Forwarding
+All services forward to server at 192.168.2.150:
+
+| Service | Protocol | WAN Port | LAN Port | Status |
+|---------|----------|----------|----------|--------|
+| Plex | TCP & UDP | 32400 | 32400 | On |
+| Jellyfin | TCP & UDP | 8096 | 8096 | On |
+| OMV | TCP & UDP | 81 | 81 | On |
+| Pi-hole | TCP & UDP | 8080 | 8080 | On |
+| Nextcloud | TCP & UDP | 8082 | 8082 | On |
+
+### TP-Link Archer MR600 — NAT Forwarding
+| ID | Service | External Port | Internal IP | Internal Port | Protocol |
+|----|---------|---------------|-------------|---------------|----------|
+| 1 | Plex | 32400 | 192.168.1.2 | 32400 | TCP |
+| 2 | Jellyfin | 8096 | 192.168.1.2 | 8096 | TCP |
+| 3 | OMV | 81 | 192.168.1.2 | 81 | TCP |
+| 4 | Pi-hole | 8080 | 192.168.1.2 | 8080 | TCP |
+| 5 | Nextcloud | 8082 | 192.168.1.2 | 8082 | TCP |
+
+**Note:** The TP-Link forwards to 192.168.1.2 (ZTE WAN IP) 
+rather than directly to the server. The ZTE then handles 
+the second level of forwarding to the actual server at 
+192.168.2.150 — this is double NAT, a consequence of the 
+dual-router topology.
+
+---
+
+## VoIP Configuration
+
+### ZTE H288a — Built-in VoIP
+The ZTE H288a has a built-in VoIP client configured 
+with ISP-provided SIP credentials. This connects to:
+- **Panasonic KX-TS880FXW** — single-line integrated 
+  corded telephone connected directly to the ZTE's 
+  phone port in the workshop
+
+### TP-Link — Grandstream HT801 ATA
+The Grandstream HT801 is a compact 1-port FXS analog 
+telephone adapter connected to the TP-Link main router. 
+It converts analog telephone signals to VoIP, allowing 
+a traditional analog phone in the house to make and 
+receive calls over the ISP VoIP service.
+
+| Device | Type | Location | Connection |
+|--------|------|----------|------------|
+| Panasonic KX-TS880FXW | Corded phone | Workshop | ZTE built-in VoIP |
+| Grandstream HT801 | ATA adapter | House | TP-Link → ISP VoIP |
+
+Both devices are configured using ISP-provided VoIP 
+credentials.
+
+---
+
+## Planned: Cisco Aironet 3602i Integration
+
+Once the Cisco AP autonomous mode conversion is complete 
+the AP will be integrated as follows:
+```
+TP-Link Archer MR600
+      │
+      │ LAN (CAT6 20m)
+      ▼
+Utepo PoE Injector NW143-2
+      │
+      │ PoE (802.3af/at)
+      ▼
+Cisco Aironet AIR-CAP3602I-E-K9
+(Enterprise WiFi — house coverage)
+```
+
+The AP will provide dedicated enterprise-grade wireless 
+coverage inside the house, replacing the TP-Link's 
+built-in WiFi for primary house connectivity. This is 
+specifically designed to support the upcoming Frigate 
+security camera system with minimal wireless interference.
+
+See [cisco-ap-conversion.md](cisco-ap-conversion.md) 
+for the full conversion plan.
+
+---
 
 ## Problems Solved
 
