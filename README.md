@@ -153,6 +153,7 @@ server access independent of the main ISP, bypasses
 throttling, and uses iptables NAT for routing.
 
 See [docs/4g-failover.md](docs/4g-failover.md)
+
 ---
 
 ## 🎯 Goals & Learning
@@ -211,6 +212,7 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
 
 
