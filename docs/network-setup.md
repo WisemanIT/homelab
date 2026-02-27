@@ -31,7 +31,7 @@ TP-Link Archer MR600 (House) — 192.168.1.0/24
       ▼
 ZTE H288a (Workshop) — 192.168.2.0/24
       │
-      ├── Server (192.168.2.150)
+      ├── Server (YOUR_SERVER_IP)
       ├── Desktop PC
       └── Laptop
       
@@ -51,31 +51,31 @@ TP-Link → CAT6 → Utepo PoE Injector → Cisco Aironet 3602i (WiFi AP)
 ### ZTE H288a Routing Table
 | Network | Subnet Mask | Gateway | Interface |
 |---------|-------------|---------|-----------|
-| 0.0.0.0 | 0.0.0.0 | 192.168.1.1 | Internet |
+| 0.0.0.0 | 0.0.0.0 | YOUR_TPLINK_GATEWAY_IP | Internet |
 | 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | Internet |
 | 192.168.2.0 | 255.255.255.0 | 0.0.0.0 | LAN |
 
 ### ZTE Static Route
 | Name | Egress | Network | Subnet Mask | Gateway |
 |------|--------|---------|-------------|---------|
-| TP-Link Route | Internet | 192.168.1.0 | 255.255.255.0 | 192.168.1.1 |
+| TP-Link Route | Internet | 192.168.1.0 | 255.255.255.0 | YOUR_TPLINK_GATEWAY_IP |
 
 ### TP-Link Archer MR600 Routing Table
 | ID | Network | Subnet Mask | Gateway | Interface |
 |----|---------|-------------|---------|-----------|
-| 1 | 0.0.0.0 | 0.0.0.0 | 192.143.18.72 | LTE |
-| 2 | 192.143.18.64 | 255.255.255.240 | 0.0.0.0 | LTE |
+| 1 | 0.0.0.0 | 0.0.0.0 | YOUR_WAN_IP | LTE |
+| 2 | YOUR_ISP_NETWORK | 255.255.255.240 | 0.0.0.0 | LTE |
 | 3 | 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | LAN & WLAN |
-| 4 | 192.168.2.0 | 255.255.255.0 | 192.168.1.2 | LAN & WLAN |
+| 4 | 192.168.2.0 | 255.255.255.0 | YOUR_ZTE_WAN_IP | LAN & WLAN |
 
 ### TP-Link Static Route
 | Network | Subnet Mask | Gateway |
 |---------|-------------|---------|
-| 192.168.2.0 | 255.255.255.0 | 192.168.1.2 |
+| 192.168.2.0 | 255.255.255.0 | YOUR_ZTE_WAN_IP |
 
 **This static route is critical** — it tells the TP-Link 
 that to reach any device on the 192.168.2.0 workshop 
-network, traffic must be sent to 192.168.1.2 (the ZTE's 
+network, traffic must be sent to YOUR_ZTE_WAN_IP (the ZTE's 
 WAN IP). Without this route house devices cannot 
 communicate with workshop devices or the server.
 
@@ -84,7 +84,7 @@ communicate with workshop devices or the server.
 ## Port Forwarding / NAT Configuration
 
 ### ZTE H288a — Port Forwarding
-All services forward to server at 192.168.2.150:
+All services forward to server at YOUR_SERVER_IP:
 
 | Service | Protocol | WAN Port | LAN Port | Status |
 |---------|----------|----------|----------|--------|
@@ -97,16 +97,16 @@ All services forward to server at 192.168.2.150:
 ### TP-Link Archer MR600 — NAT Forwarding
 | ID | Service | External Port | Internal IP | Internal Port | Protocol |
 |----|---------|---------------|-------------|---------------|----------|
-| 1 | Plex | 32400 | 192.168.1.2 | 32400 | TCP |
-| 2 | Jellyfin | 8096 | 192.168.1.2 | 8096 | TCP |
-| 3 | OMV | 81 | 192.168.1.2 | 81 | TCP |
-| 4 | Pi-hole | 8080 | 192.168.1.2 | 8080 | TCP |
-| 5 | Nextcloud | 8082 | 192.168.1.2 | 8082 | TCP |
+| 1 | Plex | 32400 | YOUR_ZTE_WAN_IP | 32400 | TCP |
+| 2 | Jellyfin | 8096 | YOUR_ZTE_WAN_IP | 8096 | TCP |
+| 3 | OMV | 81 | YOUR_ZTE_WAN_IP | 81 | TCP |
+| 4 | Pi-hole | 8080 | YOUR_ZTE_WAN_IP | 8080 | TCP |
+| 5 | Nextcloud | 8082 | YOUR_ZTE_WAN_IP | 8082 | TCP |
 
-**Note:** The TP-Link forwards to 192.168.1.2 (ZTE WAN IP) 
+**Note:** The TP-Link forwards to YOUR_ZTE_WAN_IP (ZTE WAN IP) 
 rather than directly to the server. The ZTE then handles 
 the second level of forwarding to the actual server at 
-192.168.2.150 — this is double NAT, a consequence of the 
+YOUR_SERVER_IP — this is double NAT, a consequence of the 
 dual-router topology.
 
 ---
@@ -204,3 +204,4 @@ the server.
 **Result:** All devices across both network segments now 
 successfully use Pi-hole for DNS with full ad blocking, 
 and gaming devices benefit from LanCache caching.
+
