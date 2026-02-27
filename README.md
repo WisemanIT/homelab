@@ -1,11 +1,6 @@
 # 🖥️ Homelab
 
-A self-built home server and network infrastructure project 
-running on repurposed hardware. This repository documents 
-everything — from the hardware decisions and network 
-architecture to the services running in Docker and the 
-problems solved along the way.
-
+A self-built home server and network infrastructure project running on repurposed hardware. This repository documents everything — from the hardware decisions and network architecture to the services running in Docker and the problems solved along the way.
 ---
 
 ## 🔧 Hardware
@@ -51,6 +46,7 @@ wired to the ZTE in the workshop:
 | Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise WiFi AP (house)
 | Utepo PoE Injector NW143-2      | PoE delivery for Cisco AP
 | CAT6 20m cable                  | Connects Cisco AP to main router
+| Huawei K5161H                   | 4G LTE USB Dongle — backup WAN
 
 ### Other Hardware
 - **Optical Drive:** Salvaged from Lenovo ThinkCentre M58p 
@@ -107,11 +103,13 @@ homelab/
 │   ├── sys-api/                # Sys-API + configuration
 │   └── jellyfin/               # Jellyfin media server
 ├── scripts/
-│   └── dvd-ripper.sh           # Smart disc ripping script
+│   ├── dvd-ripper.sh           # Smart disc ripping script
+│   ├── toggle-internet.sh      # WAN failover switching
+│   └── test-dongle-speed.sh    # 4G connection testing
 └── docs/
     ├── network-setup.md        # Network architecture + troubleshooting
     ├── dvd-ripping.md          # DVD/game ripping setup
-    └── plex-native-install.md  # Plex native installation
+    ├──plex-native-install.md   # Plex native installation
     └── cisco-ap-conversion.md  # Cisco AP autonomous mode conversion
 ```
 
@@ -143,6 +141,13 @@ creating ISO images for game emulation.
 See [scripts/dvd-ripper.sh](scripts/dvd-ripper.sh) and 
 [docs/dvd-ripping.md](docs/dvd-ripping.md)
 
+### 4G LTE Failover & Out-of-Band Management
+Manual WAN failover system using a Huawei K5161H 4G 
+dongle as a secondary internet path. Provides remote 
+server access independent of the main ISP, bypasses 
+throttling, and uses iptables NAT for routing.
+
+See [docs/4g-failover.md](docs/4g-failover.md)
 ---
 
 ## 🎯 Goals & Learning
@@ -201,4 +206,5 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
