@@ -2,7 +2,7 @@
 
 A self-built home server and network infrastructure project 
 running on repurposed hardware. This repository documents 
-everything — from the hardware decisions and network 
+everything - from the hardware decisions and network 
 architecture to the services running in Docker and the 
 problems solved along the way.
 
@@ -13,17 +13,17 @@ problems solved along the way.
 ### Server
 | Component     | Details 
 |---------------|---------------------------------------------------------------------------------------
-| Motherboard   | Lenovo IQ1X0MS — repurposed from Lenovo ThinkCentre M900 SFF (Machine Type 10FG) 
-| Power Supply  | Rewired — repurposed from Lenovo ThinkCentre M58p (Machine Type 9965) 
+| Motherboard   | Lenovo IQ1X0MS - repurposed from Lenovo ThinkCentre M900 SFF (Machine Type 10FG) 
+| Power Supply  | Rewired - repurposed from Lenovo ThinkCentre M58p (Machine Type 9965) 
 | Chassis       | Armaggeddon Tron 1X Micro ATX Case 
 | OS Drive      | WD 232GB (WDC WD2500AAJS) 
-| Storage 1     | Toshiba 1.82TB — LanCache 
-| Storage 2     | Seagate 465GB — Nextcloud + GameBackups 
-| Storage 3     | Seagate 931GB — Media (Movies, TV, Music) 
+| Storage 1     | Toshiba 1.82TB - LanCache 
+| Storage 2     | Seagate 465GB - Nextcloud + GameBackups 
+| Storage 3     | Seagate 931GB - Media (Movies, TV, Music) 
 | OS            | OpenMediaVault (Debian Bookworm) 
 
 ### Origin Story
-The server was built from two separate machines — neither 
+The server was built from two separate machines - neither 
 of which worked on their own. The target machine had no 
 SATA power connectors on its PSU, while the donor machine's 
 PSU had an incompatible 24-pin ATX connector. Unable to 
@@ -40,7 +40,7 @@ wired to the ZTE in the workshop:
 | Device     | Role 
 |------------|------------------------------------------------------------------------------------------
 | Desktop PC | Primary monitoring and management 
-| Laptop     | Troubleshooting — used in workshop and portable enough to troubleshoot inside the house
+| Laptop     | Troubleshooting - used in workshop and portable enough to troubleshoot inside the house
 
 ### Network
 | Device                          | Role 
@@ -51,7 +51,7 @@ wired to the ZTE in the workshop:
 | Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise WiFi AP (house)
 | Utepo PoE Injector NW143-2      | PoE delivery for Cisco AP
 | CAT6 20m cable                  | Connects Cisco AP to main router
-| Huawei K5161H                   | 4G LTE USB Dongle — backup WAN
+| Huawei K5161H                   | 4G LTE USB Dongle - backup WAN
 
 ### Other Hardware
 - **Optical Drive:** Salvaged from Lenovo ThinkCentre M58p 
@@ -125,10 +125,10 @@ homelab/
 ### LanCache Performance Tuning
 Custom nginx configurations to solve two specific problems:
 - **Timeout issue:** Epic Games would stop caching after 
-  a few minutes on slow connections — solved with 3600s 
+  a few minutes on slow connections - solved with 3600s 
   timeout configs
 - **Throughput issue:** Cached downloads were limited to 
-  200-300Mbps instead of full gigabit — solved with buffer 
+  200-300Mbps instead of full gigabit - solved with buffer 
   and directio tuning, achieving 600-700Mbps
 
 ### Pi-hole + LanCache DNS Coexistence
@@ -140,7 +140,7 @@ without port conflicts.
 ### Smart DVD Ripper
 A custom bash script that automatically detects disc types 
 (Video DVD, PS2, PC, Xbox 360) and handles each 
-appropriately — ripping movies to MKV for Plex and 
+appropriately - ripping movies to MKV for Plex and 
 creating ISO images for game emulation.
 
 See [scripts/dvd-ripper.sh](scripts/dvd-ripper.sh) and 
@@ -165,7 +165,7 @@ This project was built to develop practical skills in:
 - Hardware troubleshooting and repurposing
 
 Currently studying: **CISCO Networking Academy** 
-(Ekurhuleni Libraries — Cohort 7)
+(Ekurhuleni Libraries - Cohort 7)
 
 Interests: Network Engineering | Cybersecurity | 
 Infrastructure
@@ -176,12 +176,12 @@ Infrastructure
 
 ### Security Camera System
 Setting up AI-powered 24/7 home surveillance using:
-- **Frigate** — NVR (Network Video Recorder) for camera management
-- **OpenVINO** — Intel's AI inference engine for object 
+- **Frigate** - NVR (Network Video Recorder) for camera management
+- **OpenVINO** - Intel's AI inference engine for object 
   and person detection
 - Live feeds streamed to kitchen TV for continuous monitoring
 
-### Cisco Aironet 3602i — Enterprise WiFi Deployment
+### Cisco Aironet 3602i - Enterprise WiFi Deployment
 Deploying a secondhand enterprise-grade Cisco AP to provide 
 wider coverage specifically designed to support the security 
 camera system with minimal wireless interference. Requires 
@@ -211,6 +211,7 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
 
 
