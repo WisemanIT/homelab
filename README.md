@@ -1,6 +1,10 @@
 # 🖥️ Homelab
 
-A self-built home server and network infrastructure project running on repurposed hardware. This repository documents everything — from the hardware decisions and network architecture to the services running in Docker and the problems solved along the way.
+A self-built home server and network infrastructure project 
+running on repurposed hardware. This repository documents 
+everything — from the hardware decisions and network 
+architecture to the services running in Docker and the 
+problems solved along the way.
 ---
 
 ## 🔧 Hardware
@@ -206,5 +210,6 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
 
