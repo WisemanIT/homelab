@@ -52,6 +52,7 @@ wired to the ZTE in the workshop:
 | Utepo PoE Injector NW143-2      | PoE delivery for Cisco AP
 | CAT6 20m cable                  | Connects Cisco AP to main router
 | Huawei K5161H                   | 4G LTE USB Dongle - backup WAN
+|Technicolor TG589vn v3           | Lab network expansion — repurposed as AP/switch (Workshop (lab segment)
 
 ### Other Hardware
 - **Optical Drive:** Salvaged from Lenovo ThinkCentre M58p 
@@ -196,6 +197,21 @@ Planning to deploy Home Assistant for home automation
 and centralized control of all smart devices including 
 integration with the security camera system.
 
+### Cybersecurity Home Lab (Planning Phase)
+Designing an isolated cybersecurity lab environment 
+using the revived Technicolor TG589vn v3 as a network 
+expansion device to create a separate lab segment. 
+This keeps security experiments isolated from the 
+production household network.
+
+Planned capabilities:
+- Offensive security practice (red team)
+- Defensive monitoring and detection (blue team)
+- Isolated from production network to protect 
+  household services
+
+See [docs/cybersecurity-lab.md](docs/cybersecurity-lab.md)
+
 ## ⚠️ Security Note
 
 All configuration files in this repository have been 
@@ -212,6 +228,7 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
 
 
