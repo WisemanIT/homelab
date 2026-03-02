@@ -95,7 +95,7 @@ necessarily disable all DHCP pool parameters.
 Always verify the full pool configuration even 
 when the server function is disabled.
 
-See [docs/network-setup.md](docs/network-setup.md)
+See [network-setup.md](network-setup.md)
 
 ---
 
