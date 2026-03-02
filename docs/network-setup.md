@@ -205,3 +205,155 @@ the server.
 successfully use Pi-hole for DNS with full ad blocking, 
 and gaming devices benefit from LanCache caching.
 
+
+---
+
+## Network Expansion — Technicolor TG589vn v3
+
+### Overview
+The Technicolor TG589vn v3 was the original workshop 
+router before being replaced by the ZTE H288a. It was 
+revived to expand available ethernet ports in the 
+workshop and create an isolated network segment for 
+cybersecurity lab experiments.
+
+### Why It Was Needed
+The ZTE H288a had no remaining ethernet ports available 
+after connecting:
+- Server
+- Desktop PC
+- Laptop
+- Printers (Brother MFC 8460 - Mono Laser Multifunction Printer
+  and Canon i-SENSYS MF8280Cw - wireless color laser all-in-one printer)
+
+Rather than purchasing a new switch, the Technicolor 
+was repurposed as a network expansion device, providing 
+additional ethernet ports and a separate WiFi network 
+for the lab segment.
+
+### Hardware Limitations
+| Spec | Detail |
+|------|--------|
+| WiFi | 2.4GHz only (single band) |
+| Ethernet speed | 100Mbps max |
+| Ports | 4x LAN |
+
+These limitations are acceptable for a cybersecurity 
+lab environment where traffic is primarily small 
+packets rather than large file transfers.
+
+### Network Integration
+The Technicolor connects LAN-to-LAN with the ZTE H288a:
+```
+ZTE H288a (192.168.2.1)
+      │
+      │ LAN → LAN
+      ▼
+Technicolor TG589vn v3 (192.168.2.2)
+      │
+      ├── Lab Device 1
+      ├── Lab Device 2
+      └── Lab Device 3 (planned)
+```
+
+Operating as an access point on the same subnet as 
+the ZTE (192.168.2.0/24), all lab devices are 
+reachable from the workshop network while remaining 
+logically separated from production services.
+
+### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Primary IP | YOUR_TECHNICOLOR_IP |
+| Secondary IP | 192.168.1.1 (original, kept for reference) |
+| Subnet Mask | 255.255.255.0 |
+| DHCP Server | Disabled |
+| Gateway | YOUR_ZTE_LAN_GATEWAY_IP |
+| Primary DNS | YOUR_SERVER_IP (Pi-hole) |
+| Secondary DNS | 8.8.8.8 |
+
+### Problem: Persistent Instability (Historical)
+**Symptoms:** When previously used as an access point 
+the Technicolor would work reliably for days or weeks 
+then completely fail after any restart or power outage. 
+Every failure required a full factory reset and manual 
+reconfiguration.
+
+**What was tried that didn't work:**
+- Disabling the firewall
+- Disabling Game and Application Sharing
+- Various IP address changes
+
+**What temporarily worked:**
+Disabling Content Sharing (which included Network 
+File Server and UPnP AV Media Server) reduced network 
+service conflicts enough that the device was more 
+stable — but it still eventually broke after power 
+outages.
+
+**Root Cause Identified:**
+Two separate issues were causing the instability:
+
+**Issue 1 — IP Address Conflict:**
+The Technicolor's server IP (192.168.1.100) fell 
+within the TP-Link's DHCP pool range which also 
+started at 192.168.1.100. Both devices were claiming 
+the same IP address causing an ARP conflict. This 
+manifested intermittently because:
+- It only surfaced when DHCP leases were renewed
+- Power outages forced all devices to request leases 
+  simultaneously, guaranteeing the conflict appeared
+
+**Issue 2 — Invalid DHCP Pool Configuration:**
+Even with the DHCP server disabled, the pool 
+configuration contained invalid and conflicting values:
+
+| Setting | Problematic Value | Problem |
+|---------|------------------|---------|
+| Subnet Mask | 0.0.0.0 | Invalid — caused routing confusion |
+| Gateway | 192.168.1.1 (itself) | Sent devices to wrong gateway |
+| Primary DNS | 192.168.1.1 (itself) | DNS requests went nowhere |
+
+Despite the DHCP server being disabled, these values 
+were still partially active and caused conflicts when 
+the device restarted.
+
+### Solution Applied
+**Step 1 — Maintain access throughout:**
+Added 192.168.2.2/24 as a second IP address on the 
+Technicolor before making any changes. This ensured 
+web interface access was maintained even when 
+modifying the primary IP — preventing a lockout 
+scenario.
+
+**Step 2 — Correct the DHCP pool:**
+Updated all pool values to point to the correct 
+devices even though the server remains disabled:
+
+| Setting | Old Value | New Value |
+|---------|-----------|-----------|
+| Subnet Mask | 0.0.0.0 | 255.255.255.0 |
+| Server | 192.168.1.1 | YOUR_TECHNICOLOR_IP |
+| Gateway | 192.168.1.1 | YOUR_ZTE_LAN_GATEWAY_IP |
+| Primary DNS | 192.168.1.1 | YOUR_SERVER_IP |
+| Secondary DNS | 0.0.0.0 | 8.8.8.8 |
+
+**Step 3 — Move to correct subnet:**
+Changed primary IP from 192.168.1.1 to 
+YOUR_TECHNICOLOR_IP placing it correctly on the 
+192.168.2.0/24 subnet alongside the ZTE and server.
+
+**Result:** Stable operation confirmed through:
+- Multiple web interface restarts
+- Physical power cycles
+- Simulated power outage scenarios
+- Extended operation monitoring
+
+**Key Lesson Learned:**
+Disabling a DHCP server does not disable all DHCP 
+pool parameters. Always verify and correct the 
+complete pool configuration even when the server 
+function is turned off, as invalid values can still 
+cause network conflicts.
+```
