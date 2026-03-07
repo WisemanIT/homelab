@@ -157,6 +157,16 @@ See [docs/4g-failover.md](docs/4g-failover.md)
 
 ---
 
+## Cisco Aironet 3602i - Enterprise WiFi Deployment
+Deploying a secondhand enterprise-grade Cisco AP to provide 
+wider coverage specifically designed to support the security 
+camera system with minimal wireless interference.
+
+See [docs/cisco-ap-conversion.md](docs/cisco-ap-conversion.md) 
+for full conversion plan and progress tracker.
+
+---
+
 ## 🎯 Goals & Learning
 
 This project was built to develop practical skills in:
@@ -182,15 +192,6 @@ Setting up AI-powered 24/7 home surveillance using:
 - **OpenVINO** - Intel's AI inference engine for object 
   and person detection
 - Live feeds streamed to kitchen TV for continuous monitoring
-
-### Cisco Aironet 3602i - Enterprise WiFi Deployment
-Deploying a secondhand enterprise-grade Cisco AP to provide 
-wider coverage specifically designed to support the security 
-camera system with minimal wireless interference. Requires 
-converting from controller-based to autonomous mode via TFTP.
-
-See [docs/cisco-ap-conversion.md](docs/cisco-ap-conversion.md) 
-for full conversion plan and progress tracker.
 
 ### Home Assistant
 Planning to deploy Home Assistant for home automation 
@@ -228,6 +229,7 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
+
 
 
 
