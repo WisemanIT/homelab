@@ -205,6 +205,111 @@ the server.
 successfully use Pi-hole for DNS with full ad blocking, 
 and gaming devices benefit from LanCache caching.
 
+### 3. Server Losing All Network Connectivity When USB Adapter is Unplugged
+
+**Problem:** The OMV server became completely unreachable
+(SSH, web interfaces, ping all failed) whenever the TP-Link
+UE300 USB ethernet adapter (`enx00e04c414688`) was unplugged,
+even though the onboard NIC (`eno1`) was physically connected
+and correctly configured at `192.168.2.150`.
+
+**Background:** The USB adapter was added specifically to
+create a Linux bridge (`br1` at `192.168.2.22`) for
+EVE-NG/vWLC networking. The onboard NIC `eno1` was the
+original and primary server network interface managed by OMV.
+
+**Root cause — asymmetric routing:**
+Both `eno1` and `br1` were on the same subnet
+(`192.168.2.0/24`). When a device on the network sent
+traffic to `192.168.2.150`, packets arrived correctly on
+`eno1` — but the server's replies were going out through
+`br1` instead, because `br1`'s subnet route appeared first
+in the kernel routing table with no metric. This is called
+asymmetric routing.
+
+When the USB adapter was unplugged, `br1` went down and
+took all outbound traffic with it, making the server appear
+completely offline even though `eno1` was fully operational.
+
+Confirmed with `tcpdump`:
+```bash
+# Requests arriving correctly on eno1
+sudo tcpdump -i eno1 -n icmp
+# 192.168.2.102 > 192.168.2.150: ICMP echo request
+
+# But replies going out the wrong interface
+sudo tcpdump -i br1 -n icmp
+# 192.168.2.150 > 192.168.2.102: ICMP echo reply
+```
+
+**What didn't work:**
+- Removing the gateway line from `/etc/network/interfaces.d/br1`
+  — the route kept coming back via NetworkManager
+- Adding metric values to br1 via `nmcli` — duplicate routes
+  kept reappearing after reboots
+- Creating an NM profile for `eno1` — OMV manages `eno1` via
+  ifupdown and NM kept marking it as unmanaged
+- `ip rule` policy routing — did not override the asymmetric
+  routing behaviour in this configuration
+
+**Solution — remove br1 subnet route, use specific host routes:**
+
+The fix was to completely remove the `192.168.2.0/24` subnet
+route from `br1` and replace it with only the two specific
+host routes that `br1` actually needs to reach:
+
+```bash
+# Remove the conflicting subnet route from br1
+sudo ip route del 192.168.2.0/24 dev br1
+
+# Add only the specific hosts br1 needs to reach
+sudo ip route add 192.168.2.20/32 dev br1 src 192.168.2.22  # EVE-NG
+sudo ip route add 192.168.2.25/32 dev br1 src 192.168.2.22  # vWLC
+```
+
+Made permanent via NetworkManager:
+```bash
+sudo nmcli connection modify br1 ipv4.never-default yes
+sudo nmcli connection modify br1 +ipv4.routes "192.168.2.20/32 0.0.0.0 50"
+sudo nmcli connection modify br1 +ipv4.routes "192.168.2.25/32 0.0.0.0 50"
+sudo nmcli connection modify br1 ipv4.route-metric 1000
+```
+
+Stopped NetworkManager from treating the USB adapter as a
+standalone interface (it belongs to br1 only):
+```bash
+sudo bash -c 'cat > /etc/NetworkManager/conf.d/unmanaged.conf << EOF
+[keyfile]
+unmanaged-devices=mac:00:e0:4c:41:46:88
+EOF'
+```
+
+**Final routing table (correct state):**
+```
+default via 192.168.2.1 dev eno1 proto static
+192.168.2.0/24 dev eno1 proto kernel scope link src 192.168.2.150
+192.168.2.20 dev br1 scope link src 192.168.2.22
+192.168.2.25 dev br1 scope link src 192.168.2.22
+```
+
+**Result:**
+- `eno1` is the sole default gateway and handles all server
+  traffic
+- `br1` handles only EVE-NG (`192.168.2.20`) and vWLC
+  (`192.168.2.25`) traffic
+- Unplugging the USB adapter no longer affects server
+  connectivity — SSH, OMV, Jellyfin, Pi-hole and all other
+  services remain fully accessible
+- EVE-NG and the Cisco AP/vWLC setup continue to function
+  normally when the USB adapter is plugged in
+
+**Key lesson learned:**
+When two interfaces share the same subnet, Linux uses
+whichever subnet route appears first in the routing table
+for outbound traffic regardless of which interface received
+the incoming packet. Never assign a full subnet route to a
+bridge interface that shares a subnet with the primary NIC
+— use specific host routes instead.
 
 ---
 
@@ -356,4 +461,3 @@ pool parameters. Always verify and correct the
 complete pool configuration even when the server 
 function is turned off, as invalid values can still 
 cause network conflicts.
-```
