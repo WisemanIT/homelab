@@ -9,7 +9,8 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128  # Intel iGPU
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /opt/frigate/config:/config
+      - ./config.yml:/config/config.yml
+      - ./config/model_cache:/config/model_cache
       - /opt/frigate/storage:/media/frigate
       - type: tmpfs
         target: /tmp/cache
