@@ -59,6 +59,14 @@ full routing configuration.
 
 ---
 
+See [docker/frigate/config.yml](../docker/frigate/config.yml) 
+for the full sanitized Frigate configuration.
+
+See [docker/frigate/docker-compose.yml](../docker/frigate/docker-compose.yml) 
+for the Docker Compose deployment file.
+
+---
+
 ## Camera Stream Details
 
 | Camera | Stream | Resolution | Codec | Role |
