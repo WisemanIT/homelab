@@ -9,6 +9,10 @@ across two network segments, MQTT via Mosquitto for real-time
 event publishing, and Home Assistant automations for mobile
 notifications and recording.
 
+The system was upgraded from the default SSDlite MobileNet V2
+model (300×300) to a custom-built YOLOv9-t ONNX model (320×320)
+for improved detection accuracy on person, car, and bus classes.
+
 ---
 
 ## Hardware
@@ -56,6 +60,7 @@ full routing configuration.
 | Mosquitto Broker | 2.1.2 | MQTT message broker (HA Add-on) |
 | Tapo: Camera Control | HACS | Camera integration in HA |
 | OpenVINO | Built-in | Hardware-accelerated inference on iGPU |
+| YOLOv9-t (ONNX) | Custom build | Object detection model (320×320) |
 
 ---
 
@@ -79,6 +84,95 @@ Stream specifications confirmed via ffprobe:
 /usr/lib/ffmpeg/7.0/bin/ffprobe -v error -rtsp_transport tcp \
   -show_streams "rtsp://USERNAME:PASSWORD@CAMERA_IP:554/stream1" \
   2>&1 | grep -E "width|height|codec_name"
+```
+
+---
+
+## Detection Model
+
+### Original Model
+The system initially used Frigate's built-in SSDlite MobileNet V2
+model served via OpenVINO:
+```yaml
+model:
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  width: 300
+  height: 300
+  input_tensor: nhwc
+  input_pixel_format: bgr
+```
+
+### Upgraded Model: YOLOv9-t (ONNX)
+The model was upgraded to YOLOv9-t exported to ONNX format for
+better detection accuracy, especially for person and vehicle
+detection at distance.
+
+#### Building the Model
+The model is built via a Docker multi-stage build that clones
+the YOLOv9 repo, installs dependencies, and exports to ONNX.
+Run this once on the NVR host:
+
+```bash
+docker build . --build-arg MODEL_SIZE=t --build-arg IMG_SIZE=320 \
+  --output /opt/frigate/config/model_cache -f- <<'EOF'
+FROM python:3.11 AS build
+RUN apt-get update && apt-get install --no-install-recommends -y libgl1 cmake \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.8.0 /uv /bin/
+WORKDIR /yolov9
+ADD https://github.com/WongKinYiu/yolov9.git .
+RUN uv pip install --system -r requirements.txt
+RUN uv pip install --system onnx==1.18.0 onnxruntime onnxscript
+ARG MODEL_SIZE
+ARG IMG_SIZE
+ADD https://github.com/WongKinYiu/yolov9/releases/download/v0.1/yolov9-${MODEL_SIZE}-converted.pt \
+    yolov9-${MODEL_SIZE}.pt
+RUN sed -i "s/ckpt = torch.load(attempt_download(w), map_location='cpu')/ckpt = torch.load(attempt_download(w), map_location='cpu', weights_only=False)/g" \
+    models/experimental.py
+RUN python3 export.py --weights ./yolov9-${MODEL_SIZE}.pt --imgsz ${IMG_SIZE} --include onnx
+FROM scratch
+ARG MODEL_SIZE
+ARG IMG_SIZE
+COPY --from=build /yolov9/yolov9-${MODEL_SIZE}.onnx /yolov9-${MODEL_SIZE}-${IMG_SIZE}.onnx
+EOF
+```
+
+Output: `/opt/frigate/config/model_cache/yolov9-t-320.onnx` (~9.3MB)
+
+Available model sizes (MODEL_SIZE arg):
+
+| Size | Parameters | Use case |
+|------|-----------|----------|
+| t | 2M (tiny) | Low-power hardware like HD 530 |
+| s | 7M (small) | Better accuracy, more GPU load |
+| m | 20M (medium) | Discrete GPU recommended |
+
+#### Frigate Configuration for YOLOv9
+
+The `model` block must be **top-level** in config.yml, not nested
+under `detectors`:
+
+```yaml
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+
+model:
+  model_type: yolo-generic
+  width: 320
+  height: 320
+  input_tensor: nchw
+  input_dtype: float
+  path: /config/model_cache/yolov9-t-320.onnx
+  labelmap_path: /labelmap/coco-80.txt
+```
+
+The model_cache directory must also be mounted in docker-compose.yml:
+```yaml
+volumes:
+  - ./config.yml:/config/config.yml
+  - ./config/model_cache:/config/model_cache
 ```
 
 ---
@@ -172,6 +266,7 @@ Confirmed via `frigate/stats` MQTT topic after full startup:
 | Metric | Value |
 |--------|-------|
 | Detector type | OpenVINO (ov) |
+| Model | YOLOv9-t ONNX (320×320) |
 | Inference speed | ~10–12ms |
 | GPU utilisation | Intel VAAPI (HD 530) |
 | Garage detection fps | ~3–5 fps |
@@ -310,14 +405,153 @@ entity support in HA.
 
 ---
 
+### 6. YOLOv9 ONNX Export: onnxsim Version Conflict
+**Problem:** Initial Docker build for YOLOv9 ONNX export
+failed with:
+```
+× Failed to download and build onnxsim==0.6.2
+╰─▶ Package metadata version 0.4.36 does not match given version 0.6.2
+```
+
+**Root cause:** `onnx-simplifier>=0.4.1` resolved to v0.5.0,
+which pulled in `onnxsim==0.6.2`. The onnxsim package had a
+broken metadata version mismatch that caused uv to reject it.
+
+**Solution:** Remove `onnx-simplifier` entirely and drop the
+`--simplify` flag from the export command. The model is
+slightly larger but fully functional:
+```dockerfile
+RUN uv pip install --system onnx==1.18.0 onnxruntime onnxscript
+RUN python3 export.py --weights ./yolov9-${MODEL_SIZE}.pt \
+    --imgsz ${IMG_SIZE} --include onnx
+```
+
+---
+
+### 7. YOLOv9 Export: Missing onnxscript Module
+**Problem:** After removing onnx-simplifier, the export
+script failed silently (exit 0, no .onnx file produced).
+Running the export interactively revealed:
+```
+ONNX: export failure ❌ 0.2s: No module named 'onnxscript'
+```
+
+**Root cause:** PyTorch 2.11 uses `onnxscript` internally
+for its ONNX export path. The YOLOv9 requirements.txt does
+not include it, so it was missing from the build environment.
+
+**Solution:** Add `onnxscript` to the pip install step:
+```dockerfile
+RUN uv pip install --system onnx==1.18.0 onnxruntime onnxscript
+```
+
+**Result:** Export completed successfully, producing
+`yolov9-t.onnx` in `/yolov9/` inside the build container.
+
+---
+
+### 8. YOLOv9 ONNX File Not Found After Successful Build
+**Problem:** The Docker build completed without errors but
+the final COPY step in the scratch stage failed:
+```
+ERROR: "/yolov9/yolov9-t.onnx": not found
+```
+
+**Root cause:** The export script ran but produced no output
+because `onnxscript` was missing (see Problem 7). The build
+layer was cached from a previous run where the export also
+failed silently, so Docker used the cached (empty) layer.
+
+**Solution:** Add `--no-cache` to force a clean rebuild after
+fixing dependencies, or ensure the pip install layer is
+invalidated by changing its content. Once `onnxscript` was
+added, a clean build produced the file correctly.
+
+---
+
+### 9. Frigate model path NoneType Error
+**Problem:** After configuring the YOLOv9 model, Frigate
+crashed on startup with:
+```
+TypeError: stat: path should be string, bytes, os.PathLike or integer, not NoneType
+```
+
+**Root cause:** In Frigate 0.17, the `model` block must be
+defined at the **top level** of config.yml, not nested inside
+the `detectors` block. Nesting it under `detectors` caused
+Frigate to not parse the path at all, leaving it as None.
+
+**Incorrect structure:**
+```yaml
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+    model:           # ← WRONG: nested under detector
+      path: /config/model_cache/yolov9-t-320.onnx
+```
+
+**Correct structure:**
+```yaml
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+
+model:               # ← CORRECT: top-level key
+  path: /config/model_cache/yolov9-t-320.onnx
+```
+
+---
+
+### 10. Frigate Cannot Find Model File (Volume Not Mounted)
+**Problem:** After fixing the config structure, Frigate
+started but immediately crashed with:
+```
+FileNotFoundError: OpenVINO model file /config/model_cache/yolov9-t-320.onnx not found.
+```
+
+**Root cause:** The docker-compose.yml only mounted
+`./config.yml` as a single file, not the entire `./config/`
+directory. The `model_cache/` subdirectory was therefore
+invisible to the container.
+
+**Solution:** Add an explicit volume mount for the model
+cache directory in docker-compose.yml:
+```yaml
+volumes:
+  - ./config.yml:/config/config.yml
+  - ./config/model_cache:/config/model_cache   # ← add this
+```
+
+**Result:** Frigate located the model file and the detector
+started successfully.
+
+---
+
+### 11. Invalid model_type Value
+**Problem:** Frigate rejected the config with:
+```
+Line 14: detectors -> ov -> model -> model_type
+Input should be 'dfine', 'rfdetr', 'ssd', 'yolox', 'yolonas' or 'yolo-generic'
+```
+
+**Root cause:** The value `model_type: yolov9` is not a valid
+Frigate model type. Frigate 0.17 uses generic type names.
+
+**Solution:** Use `model_type: yolo-generic` for any YOLOv9
+model.
+
+---
+
 ## Key Lessons Learned
 
 **Dual-stream camera configuration:** Always use the camera
 substream (stream2) for detection and the main stream
 (stream1) for recording. Running detection at full 2K
-resolution (2304×1296) is unnecessary - the ssdlite model
-accepts 300×300 inputs anyway, and detection on 640×360
-uses significantly less CPU/GPU.
+resolution (2304×1296) is unnecessary - the model accepts
+320×320 inputs anyway, and detection on 640×360 uses
+significantly less CPU/GPU.
 
 **ffprobe for stream verification:**
 ```bash
@@ -336,3 +570,31 @@ with no motion - if you see those, the pipeline is healthy.
 `detect.enabled: true` is explicitly set in config.yml
 per camera. Always include this to avoid manual re-enabling
 after reboots.
+
+**YOLOv9 export dependencies:** The YOLOv9 repo's
+`requirements.txt` is outdated and does not include
+`onnxscript`, which is required by PyTorch 2.x for ONNX
+export. Always add it explicitly. The `onnx-simplifier`
+package is broken in recent versions due to onnxsim metadata
+issues - skip it entirely, the performance difference is
+negligible.
+
+**Frigate model config structure:** In Frigate 0.17, `model`
+is always a top-level key. Nesting it under `detectors` is
+silently ignored, resulting in a NoneType error at runtime.
+
+**Docker volume mounts:** When adding custom model files,
+always add an explicit volume mount in docker-compose.yml.
+Mounting only the config file (not the directory) means any
+subdirectories like `model_cache/` are invisible to the
+container.
+
+**Debugging silent Docker build failures:** If a Docker
+RUN step exits 0 but produces no expected output file, run
+the command interactively in the built image:
+```bash
+docker build ... -t debug-image
+docker run --rm debug-image python3 export.py --weights ...
+```
+This reveals error messages that were suppressed during the
+build layer execution.
