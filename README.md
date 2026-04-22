@@ -52,7 +52,8 @@ wired to the ZTE in the workshop:
 | Utepo PoE Injector NW143-2      | PoE delivery for Cisco AP
 | CAT6 20m cable                  | Connects Cisco AP to main router
 | Huawei K5161H                   | 4G LTE USB Dongle - backup WAN
-|Technicolor TG589vn v3           | Lab network expansion — repurposed as AP/switch (Workshop (lab segment)
+| Technicolor TG589vn v3          | Lab network expansion — repurposed as AP/switch (workshop lab segment)
+| TP-Link Tapo C310 (x2)          | 2K security cameras — garage and front yard
 
 ### Other Hardware
 - **Optical Drive:** Salvaged from Lenovo ThinkCentre M58p 
@@ -67,6 +68,11 @@ CAT5e cable. The main router's LAN port connects to the
 ZTE's WAN port, creating separate network segments with 
 routing rules configured on both routers for controlled 
 cross-network communication.
+
+The Cisco Aironet 3602i serves the house network segment 
+(192.168.1.0/24) as an enterprise-grade WiFi AP, providing 
+stable wireless connectivity for the front yard security 
+camera and house devices.
 
 See [docs/network-setup.md](docs/network-setup.md) for 
 full details including problems solved and solutions 
@@ -88,6 +94,8 @@ implemented.
 | Portainer | Docker management GUI | 9443 |
 | MariaDB | Nextcloud database | 3306 |
 | Redis | Nextcloud caching | 6379 |
+| Frigate NVR | AI-powered security camera NVR | 5000 |
+| Home Assistant OS | Home automation + camera integration | 8123 |
 
 ### Native Services
 
@@ -107,7 +115,8 @@ homelab/
 │   ├── lancache/               # LanCache + Pi-hole
 │   ├── nextcloud/              # Nextcloud + MariaDB + Redis
 │   ├── sys-api/                # Sys-API + configuration
-│   └── jellyfin/               # Jellyfin media server
+│   ├── jellyfin/               # Jellyfin media server
+│   └── frigate/                # Frigate NVR + config
 ├── scripts/
 │   ├── dvd-ripper.sh           # Smart disc ripping script
 │   ├── toggle-internet.sh      # WAN failover switching
@@ -115,8 +124,11 @@ homelab/
 └── docs/
     ├── network-setup.md        # Network architecture + troubleshooting
     ├── dvd-ripping.md          # DVD/game ripping setup
-    ├──plex-native-install.md   # Plex native installation
-    └── cisco-ap-conversion.md  # Cisco AP autonomous mode conversion
+    ├── plex-native-install.md  # Plex native installation
+    ├── cisco-ap-conversion.md  # Cisco AP autonomous mode conversion
+    ├── cybersecurity-lab.md    # Cybersecurity lab design
+    ├── 4g-failover.md          # 4G LTE failover setup
+    └── frigate-nvr.md          # Frigate NVR + Home Assistant security system
 ```
 
 ---
@@ -155,15 +167,34 @@ throttling, and uses iptables NAT for routing.
 
 See [docs/4g-failover.md](docs/4g-failover.md)
 
+### Frigate NVR — AI Security Camera System
+Self-hosted NVR running on the server using Intel HD 530
+iGPU via OpenVINO for hardware-accelerated object detection.
+Two TP-Link Tapo C310 cameras cover the garage and front
+yard across two separate network subnets. Integrated with
+Home Assistant for mobile notifications and automated
+recording triggered by motion detection events.
+
+- **Detector:** OpenVINO on Intel HD 530 (~10–12ms inference)
+- **Cameras:** 2K recording (2304×1296) via stream1, 640×360 
+  detection via stream2
+- **MQTT:** Mosquitto broker in HA publishing Frigate events
+- **Automations:** Motion → notification + 30s clip to phone
+
+See [docs/frigate-nvr.md](docs/frigate-nvr.md) for full 
+setup, configuration, and problems solved.
+
 ---
 
 ## Cisco Aironet 3602i - Enterprise WiFi Deployment
-Deploying a secondhand enterprise-grade Cisco AP to provide 
-wider coverage specifically designed to support the security 
-camera system with minimal wireless interference.
+Deployed as a CAPWAP-mode enterprise AP managed by a 
+virtual WLC (vWLC 8.3) running in EVE-NG on the server.
+Provides dedicated enterprise-grade wireless coverage 
+for the house network, serving as the wireless uplink 
+for the front yard security camera.
 
 See [docs/cisco-ap-conversion.md](docs/cisco-ap-conversion.md) 
-for full conversion plan and progress tracker.
+for full deployment details.
 
 ---
 
@@ -175,6 +206,8 @@ This project was built to develop practical skills in:
 - Network engineering (routing, DNS, VLANs, firewalling)
 - Self-hosted services and infrastructure
 - Hardware troubleshooting and repurposing
+- AI/ML inference (OpenVINO, object detection)
+- Home automation (Home Assistant, MQTT)
 
 Currently studying: **CISCO Networking Academy** 
 (Ekurhuleni Libraries - Cohort 7)
@@ -186,17 +219,12 @@ Infrastructure
 
 ## 🚧 In Progress
 
-### Security Camera System
-Setting up AI-powered 24/7 home surveillance using:
-- **Frigate** - NVR (Network Video Recorder) for camera management
-- **OpenVINO** - Intel's AI inference engine for object 
-  and person detection
-- Live feeds streamed to kitchen TV for continuous monitoring
-
-### Home Assistant
-Planning to deploy Home Assistant for home automation 
-and centralized control of all smart devices including 
-integration with the security camera system.
+### Object Detection Model Upgrade
+Currently using the default ssdlite_mobilenet_v2 model
+bundled with Frigate's OpenVINO detector. Working on
+exporting and deploying a YOLOv9-t ONNX model for
+significantly improved person detection accuracy,
+particularly in low-light and partial-occlusion scenarios.
 
 ### Cybersecurity Home Lab (Planning Phase)
 Designing an isolated cybersecurity lab environment 
@@ -229,11 +257,3 @@ values before deploying.
 This project is open source and available under the 
 
 [MIT License](LICENSE).
-
-
-
-
-
-
-
-
