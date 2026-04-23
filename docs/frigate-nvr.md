@@ -15,6 +15,80 @@ for improved detection accuracy on person, car, and bus classes.
 
 ---
 
+## Initial Deployment
+
+### Why the Cisco AP Was Installed
+The Cisco Aironet AIR-CAP3602I-E-K9 was acquired and
+deployed primarily to provide reliable wireless coverage for the
+front yard camera, which is too far from the main TP-Link MR600
+and ZTE H288a routers. An enterprise AP was chosen over a consumer
+alternative for reliability — no disconnections, no stuttering,
+no latency issues under sustained load.
+
+Before connecting cameras, the AP was validated using Steam Link
+wireless game streaming (Devil May Cry, Titanfall 2) for 5–7 hour
+sessions with zero disconnections. This confirmed the AP could
+handle high-bandwidth, low-latency wireless video — making it
+suitable for live camera feeds.
+
+See [network-setup.md](../network-setup.md) for full AP/vWLC
+deployment and CAPWAP configuration details.
+
+### Frigate Initial Deployment
+Frigate was deployed as a standalone Docker Compose stack at
+`/opt/frigate/` (separate from other containers) before cameras
+arrived, allowing the stack to be tested and configured in advance.
+
+```bash
+cd /opt/frigate
+docker compose up -d
+```
+
+Web UI confirmed healthy at `http://192.168.2.150:5000` with
+OpenVINO detector loaded and Intel GPU detected at 0% idle.
+Both camera slots showed "No frames received" as expected before
+physical cameras were connected.
+
+### Home Assistant OS Deployment
+HAOS was deployed as a KVM virtual machine (not Docker container)
+to get the full Supervisor, add-on store, and update pipeline.
+
+```bash
+# Download and extract HAOS qcow2 image
+wget -O /srv/.../haos.qcow2.xz \
+  https://github.com/home-assistant/operating-system/releases/download/14.2/haos_ova-14.2.qcow2.xz
+xz -d /srv/.../haos.qcow2.xz
+
+# Create KVM VM bridged to br1
+virt-install \
+  --name homeassistant \
+  --os-variant generic \
+  --ram 2048 \
+  --vcpus 2 \
+  --disk /srv/.../haos.qcow2,bus=virtio \
+  --import \
+  --network bridge=br1,model=virtio \
+  --graphics none \
+  --noautoconsole \
+  --boot uefi
+```
+
+HAOS received IP `192.168.2.114` via DHCP (reserved on router).
+MAC address: `52:54:00:30:FA:C0`.
+
+A specific host route was added to br1 for HAOS (same pattern
+as EVE-NG and vWLC — see network-setup.md Problem 3):
+```bash
+nmcli connection modify br1 +ipv4.routes "192.168.2.114/32 0.0.0.0 50"
+```
+
+VM autostart enabled to survive power outages:
+```bash
+virsh autostart homeassistant
+```
+
+---
+
 ## Hardware
 
 | Device | Role | Location |
@@ -281,6 +355,49 @@ Hardware acceleration confirmed active on both ffmpeg processes:
 ---
 
 ## Problems Solved
+
+### 0. USB Ethernet Adapter Reset Loop (RTL8153 on USB 3.0)
+**Problem:** The TP-Link UE300 USB ethernet adapter
+(`enx00e04c414688`, RTL8153 chip) entered a continuous reset
+loop when plugged into a USB 3.0 port, causing br1 to lose
+its physical member interface repeatedly. Symptoms:
+```
+r8152-cfgselector 2-7: device not accepting address, error -71
+r8152 2-7:1.0: Write USB fw fail
+r8152 2-7:1.0: Write PLA fw fail
+interface index incrementing every few seconds (200, 201, 202...)
+```
+
+**Root cause:** The r8152 Linux driver attempts to push firmware
+to the RTL8153 chip during USB 3.0 (SuperSpeed) enumeration.
+The USB 3.0 controller timed out during this firmware upload
+(error -71 = EPROTO), causing the driver to reset and
+re-enumerate the device in a loop. The adapter works correctly
+on Windows because Realtek's Windows driver handles firmware
+differently. ModemManager also worsened the issue by probing
+the interface as a potential modem on each re-enumeration.
+
+**Solution (two steps):**
+
+1. Move the adapter to a **USB 2.0 port**. On USB 2.0, the
+   driver skips the SuperSpeed firmware upload entirely and
+   the adapter enumerates stably. Confirmed by adapter moving
+   from Bus 002 (3.0) to Bus 001 (2.0) in `lsusb`.
+
+2. Disable ModemManager to prevent it from probing the adapter:
+```bash
+sudo systemctl stop ModemManager
+sudo systemctl disable ModemManager
+```
+
+**Result:** Adapter stable indefinitely on USB 2.0. No further
+reset loops observed. br1 maintains its member interface without
+dropping.
+
+**Note:** The adapter must always remain on a USB 2.0 port.
+Plugging into USB 3.0 will immediately reproduce the reset loop.
+
+---
 
 ### 1. Frigate Auth Service 502 Errors on Startup
 **Problem:** Docker logs flooded with nginx 502 errors on
