@@ -219,13 +219,6 @@ Infrastructure
 
 ## 🚧 In Progress
 
-### Object Detection Model Upgrade
-Currently using the default ssdlite_mobilenet_v2 model
-bundled with Frigate's OpenVINO detector. Working on
-exporting and deploying a YOLOv9-t ONNX model for
-significantly improved person detection accuracy,
-particularly in low-light and partial-occlusion scenarios.
-
 ### Cybersecurity Home Lab (Planning Phase)
 Designing an isolated cybersecurity lab environment 
 using the revived Technicolor TG589vn v3 as a network 
