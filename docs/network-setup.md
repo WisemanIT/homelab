@@ -1,463 +1,193 @@
-# Network Setup Documentation
+# Network Overview
 
-## Overview
-This homelab runs on a dual-router network setup spanning 
-two physical locations — the main house and a workshop.
+> Current-state summary of the homelab network. Detailed write-ups live in their own documents (see [Related documentation](#related-documentation)). All host, WAN and ISP addresses are replaced with `YOUR_...` placeholders.
+
+## Summary
+
+The network is a **routed, VLAN-segmented design** built around a Cisco 1941 router and a 24-port gigabit managed switch. The TP-Link Archer MR600 remains the internet-facing gateway (LTE WAN). Behind it, the Cisco 1941 acts as the Layer 3 boundary and inter-VLAN router (router-on-a-stick), and every device is wired to the switch and placed on a VLAN according to its role.
 
 ---
 
 ## Hardware
-| Device | Role | Location |
-|--------|------|----------|
-| TP-Link Archer MR600 | Main router — LTE WAN | House |
-| ZTE H288a | AP router — workshop gateway | Workshop |
-| Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise WiFi AP | House (planned) |
-| Grandstream HT801 | ATA — analog to VoIP | House |
-| Panasonic KX-TS880FXW | Corded phone via ZTE VoIP | Workshop |
-| Huawei K5161H | 4G LTE backup WAN | Workshop |
-| CAT5e 20m | House LAN to workshop WAN | — |
-| CAT6 20m | Cisco AP to main router (planned) | — |
+
+| Device | Role |
+|--------|------|
+| TP-Link Archer MR600 | Main router and internet gateway (LTE WAN) |
+| Cisco 1941 | Inter-VLAN router, DHCP per VLAN, ACLs, NAT overload |
+| Netgear GS724Tv4 | 24-port gigabit managed core switch (802.1Q trunk to the 1941) |
+| 24-port Cat5e patch panel | Structured cabling to the switch |
+| ZTE H288a | Isolated segment (VLAN 60) for the telephone and untrusted devices, with its own downstream subnet |
+| Cisco Aironet AIR-CAP3602I-E-K9 | Enterprise Wi-Fi AP (FlexConnect), managed from a vWLC lab in EVE-NG |
+| Grandstream HT801 | Analog-to-VoIP adapter |
+| Panasonic KX-TS880FXW | Corded phone on the ZTE's built-in VoIP |
+| 2x Tapo C310 | IP cameras (Frigate NVR) |
+| Brother MFC-8460, Canon i-SENSYS MF8280Cw | Printers |
+| Lenovo ThinkCentre M900 SFF | Main server (Docker services, VMs) |
 
 ---
 
-## Network Topology
+## Topology
+
 ```
 Internet (LTE)
       │
       ▼
-TP-Link Archer MR600 (House) — 192.168.1.0/24
+TP-Link Archer MR600  (gateway)
       │
-      │ LAN → WAN (CAT5e 20m)
       ▼
-ZTE H288a (Workshop) — 192.168.2.0/24
-      │
-      ├── Server (YOUR_SERVER_IP)
-      ├── Desktop PC
-      └── Laptop
-      
-House Devices → 192.168.1.x
-      │
-      └── Grandstream HT801 (ATA)
-            └── Analog telephone → VoIP
-
-[Planned]
-TP-Link → CAT6 → Utepo PoE Injector → Cisco Aironet 3602i (WiFi AP)
-```
-
----
-
-## Routing Configuration
-
-### ZTE H288a Routing Table
-| Network | Subnet Mask | Gateway | Interface |
-|---------|-------------|---------|-----------|
-| 0.0.0.0 | 0.0.0.0 | YOUR_TPLINK_GATEWAY_IP | Internet |
-| 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | Internet |
-| 192.168.2.0 | 255.255.255.0 | 0.0.0.0 | LAN |
-
-### ZTE Static Route
-| Name | Egress | Network | Subnet Mask | Gateway |
-|------|--------|---------|-------------|---------|
-| TP-Link Route | Internet | 192.168.1.0 | 255.255.255.0 | YOUR_TPLINK_GATEWAY_IP |
-
-### TP-Link Archer MR600 Routing Table
-| ID | Network | Subnet Mask | Gateway | Interface |
-|----|---------|-------------|---------|-----------|
-| 1 | 0.0.0.0 | 0.0.0.0 | YOUR_WAN_IP | LTE |
-| 2 | YOUR_ISP_NETWORK | 255.255.255.240 | 0.0.0.0 | LTE |
-| 3 | 192.168.1.0 | 255.255.255.0 | 0.0.0.0 | LAN & WLAN |
-| 4 | 192.168.2.0 | 255.255.255.0 | YOUR_ZTE_WAN_IP | LAN & WLAN |
-
-### TP-Link Static Route
-| Network | Subnet Mask | Gateway |
-|---------|-------------|---------|
-| 192.168.2.0 | 255.255.255.0 | YOUR_ZTE_WAN_IP |
-
-**This static route is critical** — it tells the TP-Link 
-that to reach any device on the 192.168.2.0 workshop 
-network, traffic must be sent to YOUR_ZTE_WAN_IP (the ZTE's 
-WAN IP). Without this route house devices cannot 
-communicate with workshop devices or the server.
-
----
-
-## Port Forwarding / NAT Configuration
-
-### ZTE H288a — Port Forwarding
-All services forward to server at YOUR_SERVER_IP:
-
-| Service | Protocol | WAN Port | LAN Port | Status |
-|---------|----------|----------|----------|--------|
-| Plex | TCP & UDP | 32400 | 32400 | On |
-| Jellyfin | TCP & UDP | 8096 | 8096 | On |
-| OMV | TCP & UDP | 81 | 81 | On |
-| Pi-hole | TCP & UDP | 8080 | 8080 | On |
-| Nextcloud | TCP & UDP | 8082 | 8082 | On |
-
-### TP-Link Archer MR600 — NAT Forwarding
-| ID | Service | External Port | Internal IP | Internal Port | Protocol |
-|----|---------|---------------|-------------|---------------|----------|
-| 1 | Plex | 32400 | YOUR_ZTE_WAN_IP | 32400 | TCP |
-| 2 | Jellyfin | 8096 | YOUR_ZTE_WAN_IP | 8096 | TCP |
-| 3 | OMV | 81 | YOUR_ZTE_WAN_IP | 81 | TCP |
-| 4 | Pi-hole | 8080 | YOUR_ZTE_WAN_IP | 8080 | TCP |
-| 5 | Nextcloud | 8082 | YOUR_ZTE_WAN_IP | 8082 | TCP |
-
-**Note:** The TP-Link forwards to YOUR_ZTE_WAN_IP (ZTE WAN IP) 
-rather than directly to the server. The ZTE then handles 
-the second level of forwarding to the actual server at 
-YOUR_SERVER_IP — this is double NAT, a consequence of the 
-dual-router topology.
-
----
-
-## VoIP Configuration
-
-### ZTE H288a — Built-in VoIP
-The ZTE H288a has a built-in VoIP client configured 
-with ISP-provided SIP credentials. This connects to:
-- **Panasonic KX-TS880FXW** — single-line integrated 
-  corded telephone connected directly to the ZTE's 
-  phone port in the workshop
-
-### TP-Link — Grandstream HT801 ATA
-The Grandstream HT801 is a compact 1-port FXS analog 
-telephone adapter connected to the TP-Link main router. 
-It converts analog telephone signals to VoIP, allowing 
-a traditional analog phone in the house to make and 
-receive calls over the ISP VoIP service.
-
-| Device | Type | Location | Connection |
-|--------|------|----------|------------|
-| Panasonic KX-TS880FXW | Corded phone | Workshop | ZTE built-in VoIP |
-| Grandstream HT801 | ATA adapter | House | TP-Link → ISP VoIP |
-
-Both devices are configured using ISP-provided VoIP 
-credentials.
-
----
-
-## Planned: Cisco Aironet 3602i Integration
-
-Once the Cisco AP autonomous mode conversion is complete 
-the AP will be integrated as follows:
-```
-TP-Link Archer MR600
-      │
-      │ LAN (CAT6 20m)
+Cisco 1941  (inter-VLAN router)
+      │  802.1Q trunk (Gi0/1.10 / .20 / .30 / .40 / .50 / .60)
       ▼
-Utepo PoE Injector NW143-2
+Netgear GS724Tv4  (core switch)
       │
-      │ PoE (802.3af/at)
-      ▼
-Cisco Aironet AIR-CAP3602I-E-K9
-(Enterprise WiFi — house coverage)
+      ├── VLAN 10  Core ........... Desktop, Laptop, Server, VMs
+      ├── VLAN 20  CCTV ........... 2x Tapo C310
+      ├── VLAN 30  VoIP ........... Grandstream HT801
+      ├── VLAN 40  Wireless Infra . Cisco AP 3602i, vWLC
+      ├── VLAN 50  Printers ....... Brother, Canon
+      └── VLAN 60  ZTE segment .... ZTE H288a
+                                      └── downstream subnet 192.168.3.0/24
+                                          (phone and untrusted devices)
 ```
-
-The AP will provide dedicated enterprise-grade wireless 
-coverage inside the house, replacing the TP-Link's 
-built-in WiFi for primary house connectivity. This is 
-specifically designed to support the upcoming Frigate 
-security camera system with minimal wireless interference.
-
-See [cisco-ap-conversion.md](cisco-ap-conversion.md) 
-for the full conversion plan.
 
 ---
 
-## Problems Solved
+## VLAN and IP plan
 
-### 1. Pi-hole and LanCache Port 53 Conflict
-**Problem:** Both Pi-hole and LanCache DNS needed port 53. 
-Changing LanCache's port would break its ability to receive 
-DNS queries for gaming domains.
+| VLAN | Name | Subnet | Devices |
+|------|------|--------|---------|
+| 10 | Core | 192.168.2.0/24 | Desktop, laptop, server, VMs (native/untagged on the trunk) |
+| 20 | CCTV | 192.168.20.0/24 | Tapo C310 cameras |
+| 30 | VoIP | 192.168.30.0/24 | Grandstream HT801 |
+| 40 | Wireless Infra | 192.168.40.0/24 | Cisco AP 3602i, vWLC |
+| 50 | Printers | 192.168.50.0/24 | Brother, Canon |
+| 60 | ZTE segment | 192.168.60.0/24 | ZTE H288a WAN/uplink |
+| n/a | ZTE downstream | 192.168.3.0/24 | Devices behind the ZTE (routed via the ZTE) |
 
-**What didn't work:**
-- Changing LanCache to an alternate port
-- Port forwarding from Pi-hole to LanCache
-- Moving Pi-hole into the LanCache docker-compose file
-- Setting Pi-hole upstream DNS to the server IP
+Each VLAN has its own DHCP pool on the 1941. Static devices use reservations or static addressing outside the pool.
 
-**Solution:** Manually added gaming domain DNS records in 
-Pi-hole's local DNS records, all pointing to the server IP. 
-This makes Pi-hole resolve gaming domains directly to the 
-LanCache server without needing to forward DNS traffic.
+### Why the ZTE has its own VLAN (VLAN 60)
 
-**Result:** Pi-hole handles network-wide ad blocking while 
-LanCache successfully caches game downloads from Steam, 
-Epic Games, and others simultaneously.
+The ZTE H288a originally sat on VLAN 10 while serving a second subnet (192.168.3.0/24) behind it. That created two problems, most visibly with **Wake-on-LAN** from the 192.168.3.x side to sleeping machines on VLAN 10:
 
-### 2. House Network Devices Unable to Reach Pi-hole and LanCache
-**Problem:** Devices on the house network (TP-Link) could 
-not send DNS queries to Pi-hole or LanCache on the server, 
-even with the primary DNS set to the server IP and proper 
-routing rules configured on both routers.
+1. **Wake-on-LAN relies on Layer 2 broadcasts.** A magic packet is a broadcast, and broadcasts do not cross a routed boundary. A sender on 192.168.3.x is behind the ZTE (a routed hop), so its broadcast never reaches the VLAN 10 broadcast domain.
+2. **Directed broadcasts are not forwarded by default.** Sending to 192.168.2.255 from another subnet needs the router to convert a unicast into a broadcast on the target network, which Cisco IOS disables by default (`no ip directed-broadcast`).
 
-**Diagnosis:** The ZTE AP router's WAN firewall was blocking 
-DNS packets coming from the house network segment.
+It also broke the convention of **one VLAN = one subnet**, which keeps broadcast domains, ACLs and troubleshooting predictable. Moving the ZTE into its own VLAN gives it a clean boundary: its uplink is a single subnet on VLAN 60, and the 192.168.3.0/24 network behind it is reached by a static route.
 
-**Solution:** Enabled DMZ on the ZTE AP router with the 
-server as the DMZ host. This tells the ZTE to stop 
-filtering incoming traffic and forward it directly to 
-the server.
-
-**Result:** All devices across both network segments now 
-successfully use Pi-hole for DNS with full ad blocking, 
-and gaming devices benefit from LanCache caching.
-
-### 3. Server Losing All Network Connectivity When USB Adapter is Unplugged
-
-**Problem:** The OMV server became completely unreachable
-(SSH, web interfaces, ping all failed) whenever the TP-Link
-UE300 USB ethernet adapter (`enx00e04c414688`) was unplugged,
-even though the onboard NIC (`eno1`) was physically connected
-and correctly configured at `192.168.2.150`.
-
-**Background:** The USB adapter was added specifically to
-create a Linux bridge (`br1` at `192.168.2.22`) for
-EVE-NG/vWLC networking. The onboard NIC `eno1` was the
-original and primary server network interface managed by OMV.
-
-**Root cause — asymmetric routing:**
-Both `eno1` and `br1` were on the same subnet
-(`192.168.2.0/24`). When a device on the network sent
-traffic to `192.168.2.150`, packets arrived correctly on
-`eno1` — but the server's replies were going out through
-`br1` instead, because `br1`'s subnet route appeared first
-in the kernel routing table with no metric. This is called
-asymmetric routing.
-
-When the USB adapter was unplugged, `br1` went down and
-took all outbound traffic with it, making the server appear
-completely offline even though `eno1` was fully operational.
-
-Confirmed with `tcpdump`:
-```bash
-# Requests arriving correctly on eno1
-sudo tcpdump -i eno1 -n icmp
-# 192.168.2.102 > 192.168.2.150: ICMP echo request
-
-# But replies going out the wrong interface
-sudo tcpdump -i br1 -n icmp
-# 192.168.2.150 > 192.168.2.102: ICMP echo reply
-```
-
-**What didn't work:**
-- Removing the gateway line from `/etc/network/interfaces.d/br1`
-  — the route kept coming back via NetworkManager
-- Adding metric values to br1 via `nmcli` — duplicate routes
-  kept reappearing after reboots
-- Creating an NM profile for `eno1` — OMV manages `eno1` via
-  ifupdown and NM kept marking it as unmanaged
-- `ip rule` policy routing — did not override the asymmetric
-  routing behaviour in this configuration
-
-**Solution — remove br1 subnet route, use specific host routes:**
-
-The fix was to completely remove the `192.168.2.0/24` subnet
-route from `br1` and replace it with only the two specific
-host routes that `br1` actually needs to reach:
-
-```bash
-# Remove the conflicting subnet route from br1
-sudo ip route del 192.168.2.0/24 dev br1
-
-# Add only the specific hosts br1 needs to reach
-sudo ip route add 192.168.2.20/32 dev br1 src 192.168.2.22  # EVE-NG
-sudo ip route add 192.168.2.25/32 dev br1 src 192.168.2.22  # vWLC
-```
-
-Made permanent via NetworkManager:
-```bash
-sudo nmcli connection modify br1 ipv4.never-default yes
-sudo nmcli connection modify br1 +ipv4.routes "192.168.2.20/32 0.0.0.0 50"
-sudo nmcli connection modify br1 +ipv4.routes "192.168.2.25/32 0.0.0.0 50"
-sudo nmcli connection modify br1 ipv4.route-metric 1000
-```
-
-Stopped NetworkManager from treating the USB adapter as a
-standalone interface (it belongs to br1 only):
-```bash
-sudo bash -c 'cat > /etc/NetworkManager/conf.d/unmanaged.conf << EOF
-[keyfile]
-unmanaged-devices=mac:00:e0:4c:41:46:88
-EOF'
-```
-
-**Final routing table (correct state):**
-```
-default via 192.168.2.1 dev eno1 proto static
-192.168.2.0/24 dev eno1 proto kernel scope link src 192.168.2.150
-192.168.2.20 dev br1 scope link src 192.168.2.22
-192.168.2.25 dev br1 scope link src 192.168.2.22
-```
-
-**Result:**
-- `eno1` is the sole default gateway and handles all server
-  traffic
-- `br1` handles only EVE-NG (`192.168.2.20`) and vWLC
-  (`192.168.2.25`) traffic
-- Unplugging the USB adapter no longer affects server
-  connectivity — SSH, OMV, Jellyfin, Pi-hole and all other
-  services remain fully accessible
-- EVE-NG and the Cisco AP/vWLC setup continue to function
-  normally when the USB adapter is plugged in
-
-**Key lesson learned:**
-When two interfaces share the same subnet, Linux uses
-whichever subnet route appears first in the routing table
-for outbound traffic regardless of which interface received
-the incoming packet. Never assign a full subnet route to a
-bridge interface that shares a subnet with the primary NIC
-— use specific host routes instead.
+> Resolution for Wake-on-LAN: `YOUR_WOL_SOLUTION` (to be completed). Full analysis belongs in the VLAN segmentation write-up.
 
 ---
 
-## Network Expansion — Technicolor TG589vn v3
+## Inter-VLAN access policy
 
-### Overview
-The Technicolor TG589vn v3 was the original workshop 
-router before being replaced by the ZTE H288a. It was 
-revived to expand available ethernet ports in the 
-workshop and create an isolated network segment for 
-cybersecurity lab experiments.
+Enforced with inbound ACLs on each 1941 subinterface (full details in the VLAN segmentation doc).
 
-### Why It Was Needed
-The ZTE H288a had no remaining ethernet ports available 
-after connecting:
-- Server
-- Desktop PC
-- Laptop
-- Printers (Brother MFC 8460 - Mono Laser Multifunction Printer
-  and Canon i-SENSYS MF8280Cw - wireless color laser all-in-one printer)
+| Source | Core (VLAN 10) | Other internal VLANs | Internet |
+|--------|----------------|----------------------|----------|
+| VLAN 10 Core | n/a | Allowed | Allowed |
+| VLAN 20/30/40/50 (IoT and infrastructure) | Allowed | **Denied** | Allowed |
+| VLAN 60 / ZTE downstream | **Denied** | **Denied** | Allowed |
 
-Rather than purchasing a new switch, the Technicolor 
-was repurposed as a network expansion device, providing 
-additional ethernet ports and a separate WiFi network 
-for the lab segment.
+IoT VLANs can reach the core services they depend on (DNS, DHCP, NVR, controller) and the internet, but not each other.
 
-### Hardware Limitations
-| Spec | Detail |
-|------|--------|
-| WiFi | 2.4GHz only (single band) |
-| Ethernet speed | 100Mbps max |
-| Ports | 4x LAN |
+---
 
-These limitations are acceptable for a cybersecurity 
-lab environment where traffic is primarily small 
-packets rather than large file transfers.
+## Routing
 
-### Network Integration
-The Technicolor connects LAN-to-LAN with the ZTE H288a:
-```
-ZTE H288a (192.168.2.1)
-      │
-      │ LAN → LAN
-      ▼
-Technicolor TG589vn v3 (192.168.2.2)
-      │
-      ├── Lab Device 1
-      ├── Lab Device 2
-      └── Lab Device 3 (planned)
-```
+> Verify each table against the running configuration before publishing. Values in `YOUR_...` form are placeholders.
 
-Operating as an access point on the same subnet as 
-the ZTE (192.168.2.0/24), all lab devices are 
-reachable from the workshop network while remaining 
-logically separated from production services.
+### Cisco 1941
 
-### Configuration
+| Type | Destination | Next hop / Interface |
+|------|-------------|----------------------|
+| Connected | 192.168.2.0/24 | Gi0/1.10 |
+| Connected | 192.168.20.0/24 | Gi0/1.20 |
+| Connected | 192.168.30.0/24 | Gi0/1.30 |
+| Connected | 192.168.40.0/24 | Gi0/1.40 |
+| Connected | 192.168.50.0/24 | Gi0/1.50 |
+| Connected | `YOUR_VLAN60_SUBNET` | Gi0/1.60 |
+| Static | 192.168.3.0/24 | `YOUR_ZTE_UPLINK_IP` (ZTE on VLAN 60) |
+| Static (default) | 0.0.0.0/0 | `YOUR_MR600_LAN_IP` |
 
-| Setting | Value |
-|---------|-------|
-| Primary IP | YOUR_TECHNICOLOR_IP |
-| Secondary IP | 192.168.1.1 (original, kept for reference) |
-| Subnet Mask | 255.255.255.0 |
-| DHCP Server | Disabled |
-| Gateway | YOUR_ZTE_LAN_GATEWAY_IP |
-| Primary DNS | YOUR_SERVER_IP (Pi-hole) |
-| Secondary DNS | 8.8.8.8 |
+### TP-Link Archer MR600
 
-### Problem: Persistent Instability (Historical)
-**Symptoms:** When previously used as an access point 
-the Technicolor would work reliably for days or weeks 
-then completely fail after any restart or power outage. 
-Every failure required a full factory reset and manual 
-reconfiguration.
+| Type | Destination | Next hop / Interface |
+|------|-------------|----------------------|
+| Default | 0.0.0.0/0 | LTE (`YOUR_WAN_IP`) |
+| Connected | `YOUR_MR600_LAN_SUBNET` | LAN |
+| Static | Internal VLAN subnets (if required) | `YOUR_1941_WAN_IP` |
 
-**What was tried that didn't work:**
-- Disabling the firewall
-- Disabling Game and Application Sharing
-- Various IP address changes
+### ZTE H288a
 
-**What temporarily worked:**
-Disabling Content Sharing (which included Network 
-File Server and UPnP AV Media Server) reduced network 
-service conflicts enough that the device was more 
-stable — but it still eventually broke after power 
-outages.
+| Type | Destination | Next hop / Interface |
+|------|-------------|----------------------|
+| Default | 0.0.0.0/0 | `YOUR_1941_VLAN60_GATEWAY` |
+| Connected | 192.168.3.0/24 | LAN |
 
-**Root Cause Identified:**
-Two separate issues were causing the instability:
+---
 
-**Issue 1 — IP Address Conflict:**
-The Technicolor's server IP (192.168.1.100) fell 
-within the TP-Link's DHCP pool range which also 
-started at 192.168.1.100. Both devices were claiming 
-the same IP address causing an ARP conflict. This 
-manifested intermittently because:
-- It only surfaced when DHCP leases were renewed
-- Power outages forced all devices to request leases 
-  simultaneously, guaranteeing the conflict appeared
+## NAT and port forwarding
 
-**Issue 2 — Invalid DHCP Pool Configuration:**
-Even with the DHCP server disabled, the pool 
-configuration contained invalid and conflicting values:
+- The 1941 performs **NAT overload** for the internal VLAN subnets using a single ACL (`NAT-INTERNET`). It denies internal-to-internal traffic so only internet-bound traffic is translated.
+- Services published to the internet are forwarded on the MR600 to the server (`YOUR_SERVER_IP`):
 
-| Setting | Problematic Value | Problem |
-|---------|------------------|---------|
-| Subnet Mask | 0.0.0.0 | Invalid — caused routing confusion |
-| Gateway | 192.168.1.1 (itself) | Sent devices to wrong gateway |
-| Primary DNS | 192.168.1.1 (itself) | DNS requests went nowhere |
+| Service | Protocol | External port | Internal port |
+|---------|----------|---------------|---------------|
+| `YOUR_SERVICE` | TCP | `YOUR_PORT` | `YOUR_PORT` |
 
-Despite the DHCP server being disabled, these values 
-were still partially active and caused conflicts when 
-the device restarted.
+> Earlier versions of this network used two cascaded routers and double NAT. That has been removed.
 
-### Solution Applied
-**Step 1 — Maintain access throughout:**
-Added 192.168.2.2/24 as a second IP address on the 
-Technicolor before making any changes. This ensured 
-web interface access was maintained even when 
-modifying the primary IP — preventing a lockout 
-scenario.
+---
 
-**Step 2 — Correct the DHCP pool:**
-Updated all pool values to point to the correct 
-devices even though the server remains disabled:
+## DNS and core services
 
-| Setting | Old Value | New Value |
-|---------|-----------|-----------|
-| Subnet Mask | 0.0.0.0 | 255.255.255.0 |
-| Server | 192.168.1.1 | YOUR_TECHNICOLOR_IP |
-| Gateway | 192.168.1.1 | YOUR_ZTE_LAN_GATEWAY_IP |
-| Primary DNS | 192.168.1.1 | YOUR_SERVER_IP |
-| Secondary DNS | 0.0.0.0 | 8.8.8.8 |
+- **Pi-hole** provides network-wide DNS and ad blocking, with local DNS records for internal services.
+- **LanCache** caches game downloads. Pi-hole forwards CDN hostnames to LanCache's DNS.
+- **Nginx Proxy Manager** terminates HTTPS for internal services with a wildcard Let's Encrypt certificate on a DuckDNS domain (`YOUR_DOMAIN.duckdns.org`).
+- **Uptime Kuma** monitors services and feeds alerts into Home Assistant.
 
-**Step 3 — Move to correct subnet:**
-Changed primary IP from 192.168.1.1 to 
-YOUR_TECHNICOLOR_IP placing it correctly on the 
-192.168.2.0/24 subnet alongside the ZTE and server.
+---
 
-**Result:** Stable operation confirmed through:
-- Multiple web interface restarts
-- Physical power cycles
-- Simulated power outage scenarios
-- Extended operation monitoring
+## VoIP
 
-**Key Lesson Learned:**
-Disabling a DHCP server does not disable all DHCP 
-pool parameters. Always verify and correct the 
-complete pool configuration even when the server 
-function is turned off, as invalid values can still 
-cause network conflicts.
+| Device | Location | Connection |
+|--------|----------|------------|
+| Panasonic KX-TS880FXW | ZTE segment | ZTE built-in VoIP client (ISP SIP credentials) |
+| Grandstream HT801 | VLAN 30 | Analog phone to VoIP via ISP service |
+
+SIP credentials are ISP-provided and not stored in this repository.
+
+---
+
+## Remote access
+
+- **Tailscale** runs on the server and advertises the internal subnets, giving secure access from outside without opening management ports.
+- Public exposure is limited to the forwarded services listed above.
+
+---
+
+## Changes since the original design
+
+| Change | Reason |
+|--------|--------|
+| Added Cisco 1941 and VLAN segmentation | Isolate IoT, cameras, VoIP and printers; hands-on CCNA practice |
+| Retired the Technicolor TG589vn v3 | Replaced by a 24-port gigabit switch: far more ports and 1 Gbps instead of 100 Mbps |
+| ZTE H288a moved to its own VLAN (60) | One VLAN, one subnet; clean boundary and Wake-on-LAN troubleshooting |
+| Removed double NAT | Single routed path to the internet |
+| Added Pi-hole local DNS records for LanCache | Replaces the earlier port 53 workaround |
+
+---
+
+## Related documentation
+
+- VLAN segmentation and network hardening: [vlan-segmentation-project.md](vlan-segmentation-project.md)
+- Cisco AP conversion: [cisco-ap-conversion.md](cisco-ap-conversion.md)
+- 4G failover: [4g-failover.md](4g-failover.md)
+- Frigate NVR: [frigate-nvr.md](frigate-nvr.md)
+
+**Planned write-ups** (moved out of the old network setup document):
+
+- Pi-hole and LanCache DNS design
+- Asymmetric routing fix on the server (`br1` host routes)
+- Troubleshooting history: ZTE DMZ workaround and the retired Technicolor segment
