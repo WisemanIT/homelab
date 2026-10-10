@@ -52,7 +52,7 @@ Netgear GS724Tv4 (core switch)
       │
       └── Server Cudy 1G NIC (br1) ── QEMU/KVM virtual machines
             └── EVE-NG VM
-                  └── vWLC (VLAN 40, YOUR_VWLC_IP)
+                  └── vWLC (VLAN 10, YOUR_VWLC_IP)
 ```
 
 ---
