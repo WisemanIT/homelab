@@ -53,11 +53,11 @@ All lab devices were reachable from the workshop network while remaining logical
 
 | Setting | Value |
 |---------|-------|
-| Primary IP | `YOUR_TECHNICOLOR_IP` |
+| Primary IP | 192.168.2.5` |
 | Secondary IP | Original address, kept for reference |
 | Subnet mask | 255.255.255.0 |
 | DHCP server | Disabled |
-| Gateway | `YOUR_ZTE_LAN_GATEWAY_IP` |
+| Gateway | 192.168.2.1 |
 | Primary DNS | `YOUR_SERVER_IP` (Pi-hole) |
 | Secondary DNS | 8.8.8.8 |
 
@@ -112,12 +112,12 @@ On this firmware, these values were still partially active after a restart, whic
 | Setting | Old value | New value |
 |---------|-----------|-----------|
 | Subnet mask | 0.0.0.0 | 255.255.255.0 |
-| Server | Itself | `YOUR_TECHNICOLOR_IP` |
-| Gateway | Itself | `YOUR_ZTE_LAN_GATEWAY_IP` |
-| Primary DNS | Itself | `YOUR_SERVER_IP` |
+| Server | Itself | 192.168.3.1 |
+| Gateway | Itself | 192.168.2.1 |
+| Primary DNS | Itself | `YOUR_DNS_SERVER_IP` |
 | Secondary DNS | 0.0.0.0 | 8.8.8.8 |
 
-**Step 3: move to the correct subnet.** Changed the primary IP from its original address to `YOUR_TECHNICOLOR_IP`, placing it on the same subnet as the ZTE and the server, outside the other router's DHCP pool.
+**Step 3: move to the correct subnet.** Changed the primary IP from its original address to 192.168.2.5, placing it on the same subnet as the ZTE and the server, outside the other router's DHCP pool.
 
 ## Result
 
