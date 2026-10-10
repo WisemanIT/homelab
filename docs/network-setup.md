@@ -75,7 +75,6 @@ The ZTE H288a originally sat on VLAN 10 while serving a second subnet (192.168.3
 
 It also broke the convention of **one VLAN = one subnet**, which keeps broadcast domains, ACLs and troubleshooting predictable. Moving the ZTE into its own VLAN gives it a clean boundary: its uplink is a single subnet on VLAN 60, and the 192.168.3.0/24 network behind it is reached by a static route.
 
-> Resolution for Wake-on-LAN: `YOUR_WOL_SOLUTION` (to be completed). Full analysis belongs in the VLAN segmentation write-up.
 
 ---
 
@@ -95,7 +94,6 @@ IoT VLANs can reach the core services they depend on (DNS, DHCP, NVR, controller
 
 ## Routing
 
-> Verify each table against the running configuration before publishing. Values in `YOUR_...` form are placeholders.
 
 ### Cisco 1941
 
