@@ -104,7 +104,7 @@ IoT VLANs can reach the core services they depend on (DNS, DHCP, NVR, controller
 | Connected | 192.168.30.0/24 | Gi0/1.30 |
 | Connected | 192.168.40.0/24 | Gi0/1.40 |
 | Connected | 192.168.50.0/24 | Gi0/1.50 |
-| Connected | `YOUR_VLAN60_SUBNET` | Gi0/1.60 |
+| Connected | 192.168.60.0/24 | Gi0/1.60 |
 | Static | 192.168.3.0/24 | `YOUR_ZTE_UPLINK_IP` (ZTE on VLAN 60) |
 | Static (default) | 0.0.0.0/0 | `YOUR_MR600_LAN_IP` |
 
@@ -113,7 +113,7 @@ IoT VLANs can reach the core services they depend on (DNS, DHCP, NVR, controller
 | Type | Destination | Next hop / Interface |
 |------|-------------|----------------------|
 | Default | 0.0.0.0/0 | LTE (`YOUR_WAN_IP`) |
-| Connected | `YOUR_MR600_LAN_SUBNET` | LAN |
+| Connected |  192.168.1.0/24 | LAN |
 | Static | Internal VLAN subnets (if required) | `YOUR_1941_WAN_IP` |
 
 ### ZTE H288a
@@ -142,7 +142,7 @@ IoT VLANs can reach the core services they depend on (DNS, DHCP, NVR, controller
 
 - **Pi-hole** provides network-wide DNS and ad blocking, with local DNS records for internal services.
 - **LanCache** caches game downloads. Pi-hole forwards CDN hostnames to LanCache's DNS.
-- **Nginx Proxy Manager** terminates HTTPS for internal services with a wildcard Let's Encrypt certificate on a DuckDNS domain (`YOUR_DOMAIN.duckdns.org`).
+- **Nginx Proxy Manager** terminates HTTPS for internal services with a wildcard Let's Encrypt certificate on a DuckDNS domain (nas-iris.duckdns.org).
 - **Uptime Kuma** monitors services and feeds alerts into Home Assistant.
 
 ---
