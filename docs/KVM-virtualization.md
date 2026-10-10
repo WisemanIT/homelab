@@ -47,7 +47,7 @@ Result: Y
 | VM | vCPUs | RAM | Disk | Firmware | Network | Autostart |
 |----|-------|-----|------|----------|---------|-----------|
 | `homeassistant` | 2 | 2048 MB | virtio qcow2 | UEFI | `br1` (virtio) | Yes |
-| `EVE-NG` | `YOUR_EVENG_VCPUS` | `YOUR_EVENG_RAM` | `YOUR_EVENG_DISK` | `YOUR_EVENG_FIRMWARE` | `br1` | Yes |
+| `EVE-NG` | 2 | 8192 MB | `YOUR_EVENG_DISK` | vwlc-8.3.102.0 | `br1` | Yes |
 
 ### Home Assistant OS
 
@@ -107,8 +107,8 @@ nmcli connection modify br1 +ipv4.routes "YOUR_VM_IP/32 0.0.0.0 50"
 
 | VM | VLAN | How it reaches that VLAN |
 |----|------|--------------------------|
-| `homeassistant` | `YOUR_HA_VLAN` | `YOUR_VLAN_ATTACHMENT` |
-| `EVE-NG` | `YOUR_EVENG_VLAN` | `YOUR_VLAN_ATTACHMENT` |
+| `homeassistant` | VLAN 10 | `YOUR_VLAN_ATTACHMENT` |
+| `EVE-NG` | VLAN 10 | `YOUR_VLAN_ATTACHMENT` |
 | vWLC | VLAN 40 (Wireless Infra) | `YOUR_VLAN_ATTACHMENT` |
 
 ### Fixed MAC addresses and DHCP reservations
