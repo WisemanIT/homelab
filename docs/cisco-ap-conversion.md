@@ -85,7 +85,7 @@ See [vlan-segmentation-project.md](vlan-segmentation-project.md) for the full VL
 
 | WLAN ID | SSID | VLAN | Purpose |
 |---------|------|------|---------|
-| 1 | `YOUR_SSID` | `YOUR_WLAN_VLAN` | `YOUR_WLAN_PURPOSE` |
+| 1 | `YOUR_SSID` | VLAN 40 | Connect Wireless Hosts |
 
 ---
 
@@ -327,10 +327,14 @@ config wlan enable 1
 
 ### 8. CAPWAP Join Failure: IPv6 on the vWLC
 
-**Problem:** `YOUR_SYMPTOMS` (for example, the AP discovering the controller but failing to complete the join).
+**Problem:** The AP was discovering the controller but failing to complete the join.
 
-**Solution:** IPv6 was disabled globally on the vWLC, after which the AP joined successfully: `YOUR_COMMAND_USED`.
+**Solution:** IPv6 was disabled globally on the vWLC, after which the AP joined successfully:
 
+```
+config ipv6 disable
+```
+After running this command, make sure to save your configuration using save config.
 ---
 
 ### 9. Intermittent Latency on Wireless Camera Traffic
@@ -349,9 +353,9 @@ show wlan 1
 # check the "FlexConnect Local Switching" line (Enabled / Disabled)
 ```
 
-`YOUR_SHOW_WLAN_RESULT`
+e.g FlexConnect Local Switching................... Enabled
 
-**Fix:** The cameras were moved off Wi-Fi and wired to the switch, which removes both the radio contention and the tunnel. Latency is now `YOUR_MEASURED_WIRED_LATENCY`. See [frigate-nvr.md](frigate-nvr.md) for the camera side.
+**Fix:** The cameras were moved off Wi-Fi and wired to the switch, which removes both the radio contention and the tunnel. Latency is now 1 - 10 ms on average. See [frigate-nvr.md](frigate-nvr.md) for the camera side.
 
 **Lessons learned**
 - Test wireless latency at several times of day. A clean result at night says little about daytime RF conditions.
@@ -382,7 +386,7 @@ show wlan 1
 - [x] NTP configured and syncing
 - [x] EVE-NG autostart via `virsh autostart`
 - [x] Security cameras first served wirelessly, then moved to wired (see [Problem 9](#9-intermittent-latency-on-wireless-camera-traffic) and [frigate-nvr.md](frigate-nvr.md))
-- [ ] Console cable arrived (no longer needed, kept for future use)
+- [x] Console cable arrived (no longer needed, kept for future use)
 
 ---
 
