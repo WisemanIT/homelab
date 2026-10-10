@@ -38,7 +38,7 @@ cat /sys/module/kvm_intel/parameters/nested
 # Y or 1 means nested virtualization is on
 ```
 
-Result: `YOUR_NESTED_RESULT`
+Result: Y
 
 ---
 
