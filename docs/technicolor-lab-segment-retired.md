@@ -53,11 +53,11 @@ All lab devices were reachable from the workshop network while remaining logical
 
 | Setting | Value |
 |---------|-------|
-| Primary IP | 192.168.1.2 |
+| Primary IP | 192.168.2.2 |
 | Subnet mask | 255.255.255.0 |
 | DHCP server | Disabled |
-| DHCP range | 192.168.1.100 - 192.168.1.253 |
-| Gateway | 192.168.1.1 |
+| DHCP range | 192.168.2.200 - 192.168.2.253 |
+| Gateway | 192.168.2.1 |
 | Primary DNS | 192.168.2.150 (Pi-hole) |
 | Secondary DNS | 8.8.8.8 |
 
@@ -81,25 +81,23 @@ Disabling Content Sharing (Network File Server and UPnP AV Media Server) reduced
 
 ## Root cause
 
-Two separate problems were causing the instability.
+The Technicolor's DHCP configuration did not match the network it was plugged into. Although it was meant to be an access point on the MR600's network, its DHCP pool still held values from its previous setup:
 
-### Issue 1: IP address conflict
+| Setting | Value on the MR600's network |
+|---------|------------------------------|
+| Subnet mask | 255.255.255.0 |
+| Server | 192.168.1.2 (itself) |
+| Gateway | 192.168.1.1 |
+| DHCP pool | 192.168.1.100 - 192.168.1.253 (the same range as the MR600) |
+| Primary DNS | 192.168.2.150 (a different subnet) |
+| Secondary DNS | 0.0.0.0 (invalid) |
 
-The Technicolor's own address fell inside the main router's DHCP pool range (the pool started at that same address), so the router could hand the address out to another device. Both devices then claimed the same IP.
+After a restart, the Technicolor's DHCP server behaved in one of two ways:
 
-This appeared intermittently because it only surfaced when DHCP leases were renewed. After a power outage every device requested a lease at once, which made the conflict almost certain.
+1. **It served no clients.** Devices on the Technicolor got no usable address from either router and showed "unidentified network".
+2. **It served clients from a pool that overlapped the MR600's.** Two DHCP servers on one subnet then handed out the same addresses, causing IP conflicts.
 
-### Issue 2: invalid DHCP pool configuration
-
-Even with the DHCP server disabled, the pool configuration held invalid and conflicting values:
-
-| Setting | Problem value | Problem |
-|---------|---------------|---------|
-| Subnet mask | 0.0.0.0 | Invalid; caused routing confusion |
-| Gateway | The Technicolor itself | Sent devices to the wrong gateway |
-| Primary DNS | The Technicolor itself | DNS requests went nowhere |
-
-On this firmware, these values were still partially active after a restart, which caused the conflicts.
+Both outcomes come from the same fault, a DHCP pool that was invalid and overlapped another server's range. It surfaced after restarts and power outages because the DHCP service starts fresh and every device requests a lease at once. Disabling Content Sharing reduced the symptoms but did not address the cause.
 
 ---
 
@@ -107,18 +105,18 @@ On this firmware, these values were still partially active after a restart, whic
 
 **Step 1: keep access throughout.** Added a second IP address on the Technicolor before changing anything. This kept the web interface reachable while the primary IP was modified and avoided a lockout.
 
-**Step 2: correct the DHCP pool.** Updated every pool value to point at the right devices, even though the server stays disabled:
+**Step 2: correct the DHCP pool.** Updated every pool value to match the network the device now sits on and moved the pool out of the other router’s range:
 
 | Setting | Old value | New value |
 |---------|-----------|-----------|
-| Subnet mask | 0.0.0.0 | 255.255.255.0 |
-| Server | Itself | 192.168.2.2 |
-| Gateway | Itself | 192.168.2.1 |
+| Subnet mask | 255.255.255.0 | 255.255.255.0 |
+| Server | 192.168.1.2 | 192.168.2.2 |
+| Gateway | 192.168.1.1 | 192.168.2.1 |
 | DHCP pool | 192.168.1.100 - 192.168.1.253| 192.168.2.200 - 192.168.2.253 |
-| Primary DNS | Itself | 192.168.2.150 |
+| Primary DNS | 192.168.2.150 | 192.168.2.150 |
 | Secondary DNS | 0.0.0.0 | 8.8.8.8 |
 
-**Step 3: move to the correct subnet.** Changed the primary IP from its original address to 192.168.2.2, placing it on the same subnet as the ZTE and the server, outside the other router's DHCP pool.
+**Step 3: move to the correct subnet.** Changed the primary IP from its original address to 192.168.2.2, placing it on the same subnet as the ZTE and the server, outside the pool.
 
 ## Result
 
@@ -137,7 +135,7 @@ The problems were solved, but the device was still limited to four 100 Mbps port
 
 ## Lessons learned
 
-- Disabling a DHCP server does not necessarily disable its pool parameters. Check and correct the whole pool configuration even when the server function is off.
-- A device's own static address must sit outside any DHCP pool on the network.
+- A disabled or unused DHCP server can still hold stale pool settings. Check them before connecting the device to a different network.
+- Two DHCP servers on one subnet cause conflicts or no service at all. Make sure only one is active, and that any pool on a secondary device doesn’t overlap the main one.
 - Intermittent faults that appear only after power outages often point to what happens when every device renews its lease at once.
 - Add a second management IP before changing a device's primary address, so a mistake doesn't lock you out.
