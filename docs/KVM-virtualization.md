@@ -103,14 +103,6 @@ Onboard NIC (eno1) ──► host services (OMV, Docker, Pi-hole)
 nmcli connection modify br1 +ipv4.routes "YOUR_VM_IP/32 0.0.0.0 50"
 ```
 
-### VLAN placement
-
-| VM | VLAN | How it reaches that VLAN |
-|----|------|--------------------------|
-| `homeassistant` | VLAN 10 | `YOUR_VLAN_ATTACHMENT` |
-| `EVE-NG` | VLAN 10 | `YOUR_VLAN_ATTACHMENT` |
-| vWLC | VLAN 40 (Wireless Infra) | `YOUR_VLAN_ATTACHMENT` |
-
 ### Fixed MAC addresses and DHCP reservations
 
 libvirt stores each VM's MAC address in its persistent XML, so the address survives reboots. The Cisco 1941 hands out reserved addresses by MAC, so the reservation has to match the right VM:
@@ -122,12 +114,6 @@ virsh -c qemu:///system domiflist homeassistant
 # Or read the persistent definition
 virsh -c qemu:///system dumpxml homeassistant | grep "mac address"
 ```
-
-| VM | MAC | Reserved address |
-|----|-----|------------------|
-| `homeassistant` | `YOUR_HA_MAC` | `YOUR_HA_IP` |
-| `EVE-NG` | `YOUR_EVENG_MAC` | `YOUR_EVENG_IP` |
-
 ---
 
 ## Autostart and recovery
