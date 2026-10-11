@@ -119,21 +119,12 @@ Most services run as Docker containers. Home Assistant OS and EVE-NG run as QEMU
 | Immich | Photo and video backup |
 | Stirling PDF | PDF tools |
 
-### Media
-| Service | Purpose |
-|---------|---------|
-| Jellyfin | Media streaming server (Intel iGPU transcoding) |
-| Plex Media Server | Media streaming (native systemd service) |
-| Sonarr, Radarr, Lidarr, Prowlarr | Media automation |
-| qBittorrent, slskd, MeTube | Downloaders |
-| ntfy | Notifications |
-
 ### Surveillance, Automation and Virtualization
 | Service | Purpose |
 |---------|---------|
 | Frigate NVR | AI-powered security camera NVR |
 | Home Assistant OS (KVM VM) | Home automation, camera integration and alerts |
-| IRIS | Voice assistant built on Home Assistant |
+| IRIS | AI Voice assistant built on Home Assistant |
 | EVE-NG (KVM VM) | Network emulation for Cisco labs |
 | vWLC (inside EVE-NG) | Wireless LAN controller for the Cisco AP |
 
@@ -156,6 +147,11 @@ homelab/
 │   └── test-dongle-speed.sh    # 4G connection testing
 └── docs/
     ├── network-setup.md                # Network overview, routing + NAT
+    ├── Asymmetric-routing-kvm-bridge.md # Asymmetric routing issue and solutions
+    ├── KVM-virtualization.md           # Homme Assistant and EVE-NG Virtual Machines (QEMU/KVM)
+    ├── Pihole-lancache-dns.md          # Pi-hole and LanCache DNS Coexistence
+    ├── Security-stack.md               # Security Stack: Vaultwarden, CrowdSec, Nginx Proxy Manager & Tailscale
+    technicolor-lab-segment-retired.md  # Technicolor TG589vn v3: Lab Network Expansion (Retired)
     ├── vlan-segmentation-project.md    # VLAN segmentation + network hardening
     ├── dvd-ripping.md                  # DVD/game ripping setup
     ├── plex-native-install.md          # Plex native installation
