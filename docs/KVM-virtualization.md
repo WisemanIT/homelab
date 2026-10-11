@@ -211,18 +211,6 @@ The host has four cores shared between Docker services, Frigate's inference, and
 - Offload CPU-heavy extras (for example local TTS) to another machine instead of adding more to the host
 - Watch per-VM CPU with `virsh domstats` before adding anything new
 
-Observed pressure points: `YOUR_OBSERVATIONS`
-
----
-
-## Backup and recovery
-
-| Item | Method |
-|------|--------|
-| VM disk images | `YOUR_BACKUP_METHOD` |
-| Home Assistant configuration | `YOUR_HA_BACKUP_METHOD` |
-| EVE-NG labs | `YOUR_EVENG_BACKUP_METHOD` |
-
 ---
 
 ## Lessons learned
