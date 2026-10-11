@@ -4,7 +4,7 @@
 
 A self-hosted password manager and an intrusion-detection/prevention layer sitting behind a single reverse proxy, with Tailscale for private remote access, all running on the homelab server (Debian 12 / OpenMediaVault, Docker).
 
-> **Note on placeholders:** IPs, domains, keys and hashes in this document are sanitized. Replace `YOUR_SERVER_IP`, `your-domain.duckdns.org`, `YOUR_BOUNCER_KEY`, `YOUR_ARGON2_HASH` and `YOUR_TAILSCALE_IP` with real values. Never commit real secrets to the repo.
+> **Note on placeholders:** IPs, domains, keys and hashes in this document are sanitized. Replace `YOUR_SERVER_IP`, `your-domain.duckdns.org`, `YOUR_BOUNCER_KEY`, `YOUR_ARGON2_HASH` and `YOUR_TAILSCALE_IP` with real values.
 
 ---
 
