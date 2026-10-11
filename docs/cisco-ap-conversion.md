@@ -377,7 +377,7 @@ e.g FlexConnect Local Switching................... Enabled
 - [x] AP running in FlexConnect mode
 - [x] IPv6 disabled on the vWLC (join issue resolved)
 - [x] WLAN `YOUR_SSID` created with WPA2 PSK
-- [x] AP and vWLC placed on the Wireless Infra VLAN (VLAN 40)
+- [x] AP placed on the Wireless Infra VLAN (VLAN 40) and the vWLC placed on VLAN 10
 - [x] Pi-hole DNS record for controller discovery
 - [x] CleanAir enabled (2.4GHz + 5GHz)
 - [x] Beamforming / ClientLink 2.0 enabled (2.4GHz + 5GHz)
